@@ -1,0 +1,8 @@
+#pragma once
+
+namespace Reroll::Config
+{
+inline constexpr char TmdbBaseUrl[] = "https://api.themoviedb.org/3";
+// Accepts either the API Read Access Token or the 32-character v3 API key.
+inline constexpr char TmdbApiKey[] = "REPLACE_WITH_YOUR_TMDB_CREDENTIAL";
+}
