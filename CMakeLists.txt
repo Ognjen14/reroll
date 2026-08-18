@@ -68,7 +68,6 @@ qt_add_resources(appReroll "ASSETS"
     assets/nav/home.svg
     assets/nav/my_list.svg
     assets/nav/settings.svg
-    assets/nav/taste.svg
 )
 
 set_target_properties(appReroll PROPERTIES
