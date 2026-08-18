@@ -1,4 +1,4 @@
-# Setting Up Your TMDB Key
+# `Setting Up Your TMDB Key`
 
 The app needs a TMDB credential to fetch movie data. That credential lives in `include/Config/ApiKeys.h`, which is **not** in Git — so you'll need to create it yourself the first time you clone the repo on a new machine. You only have to do this once.
 
@@ -29,3 +29,4 @@ Just replace the text inside the quotes. Leave the rest of the C++ around it alo
 
 - `ApiKeys.h` is gitignored. Don't commit it, and don't paste your key anywhere else in the project.
 - `ApiKeys.h.example` is only a template. It's never compiled — the app includes `ApiKeys.h`.
+

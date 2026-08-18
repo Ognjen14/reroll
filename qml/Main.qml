@@ -70,7 +70,7 @@ ApplicationWindow {
         currentIndex: 0 //Start at default
 
         onTabSelected: (i)=> {
-                            const pages = [homePage,discoverPage,favoritesPage,tastePage,settingsPage]
+                            const pages = [homePage,discoverPage,favoritesPage,settingsPage]
                            _stack.replace(pages[i],StackView.Immediate)
 
         }
@@ -87,12 +87,9 @@ ApplicationWindow {
     }
     Component{
         id: favoritesPage
-        P.Favorites{}
+        P.MyList{}
     }
-    Component{
-        id: tastePage
-        P.Taste{}
-    }
+
     Component{
         id: settingsPage
         P.SettingsPage{}

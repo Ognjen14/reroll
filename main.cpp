@@ -12,7 +12,6 @@ int main(int argc, char *argv[])
     app.setApplicationName("Reroll");
     app.setApplicationVersion("0.0.1");
     RRLog::install(true,"F:/topic_dev/logs/reroll.log");
-    RR_LOG_I() << "log file:" << RRLog::logFilePath();
 
     static AppSettings appSettings;
     qmlRegisterSingletonInstance("com.topicdev.reroll",1,0,"AppSettings",&appSettings);

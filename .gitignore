@@ -56,3 +56,6 @@ compile_commands.json
 *_qmlcache.qrc
 
 /include/Config/ApiKeys.h
+
+ARCHITECTURE.md
+TASKS.md

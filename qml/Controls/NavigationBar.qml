@@ -26,7 +26,6 @@ Item {
         ListElement { tabId: "home";      label: qsTr("Home")     }
         ListElement { tabId: "discover";  label: qsTr("Discover") }
         ListElement { tabId: "favorites"; label: qsTr("My List")  }
-        ListElement { tabId: "taste";     label: qsTr("Taste")    }
         ListElement { tabId: "settings";  label: qsTr("Settings") }
     }
 

@@ -51,10 +51,8 @@ qt_add_qml_module(appReroll
         #Pages
         qml/Pages/SettingsPage.qml
         qml/Pages/Discover.qml
-        qml/Pages/Favorites.qml
+        qml/Pages/MyList.qml
         qml/Pages/HomePage.qml
-        qml/Pages/Taste.qml
-
 )
 
 qt_add_resources(appReroll "ASSETS"
