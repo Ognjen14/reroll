@@ -50,7 +50,7 @@ qt_add_qml_module(appReroll
 
         #Pages
         qml/Pages/SettingsPage.qml
-        qml/Pages/Discover.qml
+        qml/Pages/DiscoverPage.qml
         qml/Pages/MyList.qml
         qml/Pages/HomePage.qml
 )

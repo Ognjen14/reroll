@@ -83,7 +83,7 @@ ApplicationWindow {
 
     Component{
         id: discoverPage
-        P.Discover{}
+        P.DiscoverPage{}
     }
     Component{
         id: favoritesPage
