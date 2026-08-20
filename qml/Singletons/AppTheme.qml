@@ -62,7 +62,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#221A4D",
 
-            dark:           "#8F82E3",
+            dark:           "#6F5CEB",
             darkContainer:  "#1F174F",
             darkOn:         "#171236",
             darkOnContainer: "#D9D7EA"
@@ -75,7 +75,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#0D47A1",
 
-            dark:           "#79AFEC",
+            dark:           "#5C9FEB",
             darkContainer:  "#17314F",
             darkOn:         "#122336",
             darkOnContainer: "#D6E0EB"
@@ -88,7 +88,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#004D40",
 
-            dark:           "#79ECDC",
+            dark:           "#5CEBD7",
             darkContainer:  "#174F47",
             darkOn:         "#123630",
             darkOnContainer: "#D6EBE8"
@@ -101,7 +101,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#1B5E20",
 
-            dark:           "#8FD693",
+            dark:           "#61E569",
             darkContainer:  "#1B4B1E",
             darkOn:         "#123614",
             darkOnContainer: "#D9E7DA"
@@ -114,7 +114,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#743600",
 
-            dark:           "#ECB079",
+            dark:           "#EBA05C",
             darkContainer:  "#4F3217",
             darkOn:         "#362312",
             darkOnContainer: "#EBE0D6"
@@ -127,7 +127,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#880E4F",
 
-            dark:           "#EC79A6",
+            dark:           "#EB5C94",
             darkContainer:  "#4F172D",
             darkOn:         "#361220",
             darkOnContainer: "#EBD6DE"
@@ -140,7 +140,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#7F0000",
 
-            dark:           "#E58080",
+            dark:           "#EB5C5C",
             darkContainer:  "#4F1717",
             darkOn:         "#361212",
             darkOnContainer: "#EBD6D6"
@@ -153,7 +153,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#263238",
 
-            dark:           "#90BFD5",
+            dark:           "#74BBDC",
             darkContainer:  "#213945",
             darkOn:         "#122A36",
             darkOnContainer: "#DCE2E5"
@@ -166,7 +166,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#46196B",
 
-            dark:           "#B28CD9",
+            dark:           "#A25CEB",
             darkContainer:  "#33194D",
             darkOn:         "#241236",
             darkOnContainer: "#E0D9E8"
@@ -178,7 +178,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#5C4700",
 
-            dark:           "#E8CB4D",
+            dark:           "#F0CF42",
             darkContainer:  "#4F4317",
             darkOn:         "#362D12",
             darkOnContainer: "#EBE4D6"
@@ -191,7 +191,7 @@ QtObject {
             lightOn:        "#FFFFFF",
             lightOnContainer: "#7A0000",
 
-            dark:           "#EF6F6F",
+            dark:           "#F23636",
             darkContainer:  "#4F1414",
             darkOn:         "#2E0C0C",
             darkOnContainer: "#EBD8D8"
@@ -260,6 +260,17 @@ QtObject {
         darkMode ? currentAccent.darkOnContainer
                  : currentAccent.lightOnContainer
 
+    // For small icons tinted directly against `primary` (not text, which
+    // reads fine as onPrimary's darker tone on a filled chip). Icons want
+    // to stay white in dark mode too - `primary` is a light pastel there
+    // for every accent, so onPrimary's per-accent dark tone is correct
+    // for text but reads as barely-there for a compact icon. The one
+    // exception is the Mono accent, whose dark-mode primary (#ECECEC) is
+    // itself near white, so white-on-white would vanish - only there does
+    // this fall back to onPrimary's actual (near-black) value.
+    readonly property color onPrimaryIcon:
+        (darkMode && safeAccentIndex === 0) ? onPrimary : "#FFFFFF"
+
 
     // -----------------------------------------------------------------
     // Universal semantic states
@@ -313,6 +324,42 @@ QtObject {
 
     readonly property color focus:
         primary
+
+
+    // -----------------------------------------------------------------
+    // Spacing, radii, control sizing, breakpoints
+    // -----------------------------------------------------------------
+
+    readonly property int spacing2:  2
+    readonly property int spacing4:  4
+    readonly property int spacing6:  6
+    readonly property int spacing8:  8
+    readonly property int spacing10: 10
+    readonly property int spacing12: 12
+    readonly property int spacing14: 14
+    readonly property int spacing16: 16
+    readonly property int spacing18: 18
+    readonly property int spacing20: 20
+    readonly property int spacing24: 24
+    readonly property int spacing32: 32
+
+    readonly property int radiusSmall:  8
+    readonly property int radiusMedium: 12
+    readonly property int radiusLarge:  16
+    readonly property int radiusXLarge: 20
+    readonly property int radiusSheet:  24
+    readonly property int radiusPill:   999
+
+    readonly property int controlHeightSmall:  36
+    readonly property int controlHeightMedium: 46
+    readonly property int controlHeightLarge:  52
+
+    readonly property int touchTargetMinimum: 48
+
+    readonly property int breakpointLargePhone: 480
+    readonly property int breakpointTablet:     760
+
+    readonly property real posterAspectRatio: 1.5
 
 
     //Scaling font

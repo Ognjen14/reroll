@@ -1,6 +1,6 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Controls.Material
 import "./Singletons" as S
 import "./Controls" as Ctrl
 import "./Pages" as P
@@ -36,21 +36,54 @@ ApplicationWindow {
         function onDarkModeChanged() {_applySystemBars()}
     }
 
+    property double _lastBackMs: 0
+
+    // Returns true when the press was consumed (i.e. must NOT close the window).
+    function _handleBack() {
+        // Some devices deliver both the OnBackInvokedCallback route and a raw
+        // KEYCODE_BACK (-> onClosing below) for a single press - without this
+        // debounce that would pop/close twice for one press.
+        const now = Date.now()
+        if (now - _lastBackMs < 250)
+            return true
+        _lastBackMs = now
+
+        if (S.PopupRegistry.closeTop())
+            return true
+        if (_stack.depth > 1) {
+            _stack.pop()
+            return true
+        }
+        // Root tab page - minimize instead of quitting, so the process stays
+        // warm and doesn't look like a crash to the user.
+        aSys.minimizeApp()
+        return true
+    }
+
+    Connections {
+        target: aSys
+        function onBackPressed() { _handleBack() }
+    }
+
+    onClosing: (close) => {
+        // Desktop's window-close button should just close the window - only
+        // Android routes back through minimize-instead-of-quit.
+        if (Qt.platform.os === "android")
+            close.accepted = !_handleBack()
+    }
+
     Component.onCompleted:
     {
         _applySystemBars()
         _applyFontScale()
-
-
     }
-
 
     StackView{
         id: _stack
         anchors.left:   parent.left
         anchors.right:  parent.right
         anchors.top:    parent.top
-        anchors.bottom: parent.bottom
+        anchors.bottom: _navBar.top
         initialItem: homePage
 
         pushEnter:    null

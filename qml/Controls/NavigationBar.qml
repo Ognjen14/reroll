@@ -23,10 +23,10 @@ Item {
 
     ListModel {
         id: _model
-        ListElement { tabId: "home";      label: qsTr("Home")     }
-        ListElement { tabId: "discover";  label: qsTr("Discover") }
-        ListElement { tabId: "favorites"; label: qsTr("My List")  }
-        ListElement { tabId: "settings";  label: qsTr("Settings") }
+        ListElement { tabId: "home";      label: qsTr("Reroll");   icon: "qrc:/assets/nav/home.svg" }
+        ListElement { tabId: "discover";  label: qsTr("Discover"); icon: "qrc:/assets/nav/discover.svg" }
+        ListElement { tabId: "favorites"; label: qsTr("My List");  icon: "qrc:/assets/nav/my_list.svg" }
+        ListElement { tabId: "settings";  label: qsTr("Settings"); icon: "qrc:/assets/nav/settings.svg" }
     }
 
     readonly property real _tabW: root.width / _model.count
@@ -70,22 +70,25 @@ Item {
 
                     Column {
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: 4
 
-                        Item {
+                        ThemedIcon {
+                            id: _icon
+
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 14
-                            height: 14
+                            width: 22
+                            height: 22
+                            source: model.icon
+                            showPlaceholder: false
+                            tintColor: _tab._active ? root.navAccent : AppTheme.textSecondary
+                            scale: _tab._active ? 1.08 : 1.0
+                            transformOrigin: Item.Center
 
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 9
-                                height: width
-                                radius: width / 2
-                                color: _tab._active ? root.navAccent : "transparent"
-                                Behavior on color {
-                                    ColorAnimation { duration: 250; easing.type: Easing.OutCubic }
-                                }
+                            Behavior on tintColor {
+                                ColorAnimation { duration: 250; easing.type: Easing.OutCubic }
+                            }
+                            Behavior on scale {
+                                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
                             }
                         }
 

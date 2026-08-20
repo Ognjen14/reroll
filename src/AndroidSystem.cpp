@@ -1,17 +1,32 @@
 #include "include/AndroidSystem.h"
 
+#include "RRLog.h"
+
 #ifdef Q_OS_ANDROID
 # include <QJniObject>
 # include <QCoreApplication>
+# include <QMetaObject>
 #endif
 
-AndroidSystem::AndroidSystem(QObject *parent) : QObject(parent) {}
+namespace
+{
+#ifdef Q_OS_ANDROID
+AndroidSystem *g_androidSystem = nullptr;
+#endif
+}
+
+AndroidSystem::AndroidSystem(QObject *parent) : QObject(parent)
+{
+#ifdef Q_OS_ANDROID
+    g_androidSystem = this;
+#endif
+}
 
 void AndroidSystem::setLightStatusBar(bool light)
 {
 #ifdef Q_OS_ANDROID
     QJniObject::callStaticMethod<void>(
-        "com/ognje/reroll/RerollActivity",
+        "com/topicdev/reroll/RerollActivity",
         "setLightSystemBars",
         "(Z)V",
         static_cast<jboolean>(light)
@@ -25,7 +40,7 @@ void AndroidSystem::setBarBackgroud(const QColor &color)
 {
 #ifdef Q_OS_ANDROID
     QJniObject::callStaticMethod<void>(
-        "com/ognje/reroll/RerollActivity",
+        "com/topicdev/reroll/RerollActivity",
         "setBarBackground",
         "(I)V",
         static_cast<jint>(color.rgba())
@@ -33,6 +48,23 @@ void AndroidSystem::setBarBackgroud(const QColor &color)
 #else
     Q_UNUSED(color)
 #endif
+}
+
+void AndroidSystem::minimizeApp()
+{
+#ifdef Q_OS_ANDROID
+    QJniObject::callStaticMethod<void>(
+        "com/topicdev/reroll/RerollActivity",
+        "minimizeApp",
+        "()V"
+        );
+#endif
+}
+
+void AndroidSystem::onBackInternal()
+{
+    RR_LOG_D() << "AndroidSystem back button received";
+    emit backPressed();
 }
 
 bool AndroidSystem::isSystemDarkMode() const
@@ -59,3 +91,13 @@ bool AndroidSystem::isSystemDarkMode() const
 #endif
 }
 
+#ifdef Q_OS_ANDROID
+extern "C" JNIEXPORT void JNICALL
+Java_com_topicdev_reroll_RerollActivity_nativeOnBack(JNIEnv *, jclass)
+{
+    if (g_androidSystem)
+    {
+        QMetaObject::invokeMethod(g_androidSystem, "onBackInternal", Qt::QueuedConnection);
+    }
+}
+#endif
