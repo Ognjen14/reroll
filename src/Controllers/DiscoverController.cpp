@@ -99,6 +99,11 @@ ViewModels::Models::GenreSectionListModel *DiscoverController::genreSections() n
     return &m_genreSections;
 }
 
+ViewModels::Models::GenreSectionListModel *DiscoverController::tvGenreSections() noexcept
+{
+    return &m_tvGenreSections;
+}
+
 bool DiscoverController::loading() const noexcept
 {
     return m_pendingRequestCount > 0;
@@ -227,7 +232,8 @@ void DiscoverController::start()
         return m_tmdbClient.popularTv(page, std::move(handler));
     });
 
-    fetchGenreSections();
+    fetchGenreSections(false);
+    fetchGenreSections(true);
 }
 
 void DiscoverController::fetchInto(ViewModels::Models::TitleListModel &target,
@@ -258,44 +264,61 @@ void DiscoverController::fetchInto(ViewModels::Models::TitleListModel &target,
         }));
 }
 
-void DiscoverController::fetchGenreSections()
+void DiscoverController::fetchGenreSections(bool isTv)
 {
     beginRequest();
-    static_cast<void>(m_tmdbClient.movieGenres(
-        std::nullopt,
-        [this](Infrastructure::TmdbClient::GenreListResult result) {
-            endRequest();
-            auto *genres = std::get_if<Infrastructure::TmdbGenreListResponseDto>(&result);
-            if (!genres)
-            {
-                RR_LOG_W() << "Discover genre list failed";
-                return;
-            }
+    auto handler = [this, isTv](Infrastructure::TmdbClient::GenreListResult result) {
+        endRequest();
+        auto *genres = std::get_if<Infrastructure::TmdbGenreListResponseDto>(&result);
+        if (!genres)
+        {
+            RR_LOG_W() << "Discover genre list failed" << (isTv ? "tv" : "movie");
+            return;
+        }
 
-            std::vector<std::pair<std::int32_t, QString>> sections;
-            sections.reserve(genres->genres.size());
-            for (const Infrastructure::TmdbGenreDto &genre : genres->genres)
-            {
-                sections.emplace_back(genre.id, QString::fromStdString(genre.name));
-            }
-            RR_LOG_I() << "Discover genre sections loaded" << sections.size() << "genres";
-            m_genreSections.setGenres(sections);
+        std::vector<std::pair<std::int32_t, QString>> sections;
+        sections.reserve(genres->genres.size());
+        for (const Infrastructure::TmdbGenreDto &genre : genres->genres)
+        {
+            sections.emplace_back(genre.id, QString::fromStdString(genre.name));
+        }
+        RR_LOG_I() << "Discover genre sections loaded" << (isTv ? "tv" : "movie")
+                   << sections.size() << "genres";
 
-            for (int row = 0; row < static_cast<int>(sections.size()); ++row)
+        ViewModels::Models::GenreSectionListModel &sectionsModel =
+            isTv ? m_tvGenreSections : m_genreSections;
+        QHash<std::int32_t, PaginationState> &pagination =
+            isTv ? m_tvGenrePagination : m_genrePagination;
+        QHash<std::int32_t, ViewModels::Models::TitleListModel *> &titleModels =
+            isTv ? m_tvGenreTitleModels : m_genreTitleModels;
+
+        sectionsModel.setGenres(sections);
+
+        for (int row = 0; row < static_cast<int>(sections.size()); ++row)
+        {
+            const std::int32_t genreId = sections[static_cast<std::size_t>(row)].first;
+            auto *rowModel = sectionsModel.titleModelForRow(row);
+            if (rowModel)
             {
-                const std::int32_t genreId = sections[static_cast<std::size_t>(row)].first;
-                auto *rowModel = m_genreSections.titleModelForRow(row);
-                if (rowModel)
-                {
-                    m_genreTitleModels.insert(genreId, rowModel);
-                    m_genrePagination.insert(genreId, PaginationState{});
-                    fetchGenreRow(genreId, row, *rowModel);
-                }
+                titleModels.insert(genreId, rowModel);
+                pagination.insert(genreId, PaginationState{});
+                fetchGenreRow(isTv, genreId, row, *rowModel);
             }
-        }));
+        }
+    };
+
+    if (isTv)
+    {
+        static_cast<void>(m_tmdbClient.tvGenres(std::nullopt, std::move(handler)));
+    }
+    else
+    {
+        static_cast<void>(m_tmdbClient.movieGenres(std::nullopt, std::move(handler)));
+    }
 }
 
-void DiscoverController::fetchGenreRow(std::int32_t genreId,
+void DiscoverController::fetchGenreRow(bool isTv,
+                                       std::int32_t genreId,
                                        int row,
                                        ViewModels::Models::TitleListModel &target)
 {
@@ -304,28 +327,41 @@ void DiscoverController::fetchGenreRow(std::int32_t genreId,
     request.page = 1;
     request.genreIds = {genreId};
 
-    static_cast<void>(m_tmdbClient.discoverMovie(
-        request,
-        [this, &target, genreId, row](Infrastructure::TmdbClient::DiscoverResult result) {
-            endRequest();
-            if (auto *page = std::get_if<Infrastructure::TmdbDiscoverPageDto>(&result))
-            {
-                RR_LOG_D() << "Discover genre row loaded" << genreId
-                          << page->results.size() << "results";
-                target.setEntries(toEntries(page->results));
-                m_genreSections.setTotalResults(
-                    row, static_cast<qint64>(page->totalResults));
-                const auto stateIt = m_genrePagination.find(genreId);
-                if (stateIt != m_genrePagination.end())
-                {
-                    stateIt->nextPage = page->page + 1;
-                    stateIt->totalPages = page->totalPages;
-                }
-                return;
-            }
+    auto handler = [this, &target, isTv, genreId, row](
+                       Infrastructure::TmdbClient::DiscoverResult result) {
+        endRequest();
+        if (auto *page = std::get_if<Infrastructure::TmdbDiscoverPageDto>(&result))
+        {
+            RR_LOG_D() << "Discover genre row loaded" << (isTv ? "tv" : "movie")
+                      << genreId << page->results.size() << "results";
+            target.setEntries(toEntries(page->results));
 
-            RR_LOG_W() << "Discover genre row failed" << genreId;
-        }));
+            ViewModels::Models::GenreSectionListModel &sectionsModel =
+                isTv ? m_tvGenreSections : m_genreSections;
+            sectionsModel.setTotalResults(row, static_cast<qint64>(page->totalResults));
+
+            QHash<std::int32_t, PaginationState> &pagination =
+                isTv ? m_tvGenrePagination : m_genrePagination;
+            const auto stateIt = pagination.find(genreId);
+            if (stateIt != pagination.end())
+            {
+                stateIt->nextPage = page->page + 1;
+                stateIt->totalPages = page->totalPages;
+            }
+            return;
+        }
+
+        RR_LOG_W() << "Discover genre row failed" << (isTv ? "tv" : "movie") << genreId;
+    };
+
+    if (isTv)
+    {
+        static_cast<void>(m_tmdbClient.discoverTv(request, std::move(handler)));
+    }
+    else
+    {
+        static_cast<void>(m_tmdbClient.discoverMovie(request, std::move(handler)));
+    }
 }
 
 void DiscoverController::loadMoreGeneric(ViewModels::Models::TitleListModel &target,
@@ -377,9 +413,24 @@ void DiscoverController::loadMoreTrendingMovies()
 
 void DiscoverController::loadMoreForGenre(int genreId)
 {
-    const auto stateIt = m_genrePagination.find(genreId);
-    const auto modelIt = m_genreTitleModels.find(genreId);
-    if (stateIt == m_genrePagination.end() || modelIt == m_genreTitleModels.end())
+    loadMoreForGenreImpl(false, genreId);
+}
+
+void DiscoverController::loadMoreForTvGenre(int genreId)
+{
+    loadMoreForGenreImpl(true, genreId);
+}
+
+void DiscoverController::loadMoreForGenreImpl(bool isTv, int genreId)
+{
+    QHash<std::int32_t, PaginationState> &pagination =
+        isTv ? m_tvGenrePagination : m_genrePagination;
+    QHash<std::int32_t, ViewModels::Models::TitleListModel *> &titleModels =
+        isTv ? m_tvGenreTitleModels : m_genreTitleModels;
+
+    const auto stateIt = pagination.find(genreId);
+    const auto modelIt = titleModels.find(genreId);
+    if (stateIt == pagination.end() || modelIt == titleModels.end())
     {
         return;
     }
@@ -387,14 +438,16 @@ void DiscoverController::loadMoreForGenre(int genreId)
     loadMoreGeneric(
         *modelIt.value(),
         stateIt.value(),
-        [this, genreId](Infrastructure::TmdbPageNumber page,
-                        Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
+        [this, isTv, genreId](Infrastructure::TmdbPageNumber page,
+                              Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
             Infrastructure::TmdbDiscoverRequestDto request;
             request.page = page;
             request.genreIds = {genreId};
-            return m_tmdbClient.discoverMovie(request, std::move(handler));
+            return isTv
+                ? m_tmdbClient.discoverTv(request, std::move(handler))
+                : m_tmdbClient.discoverMovie(request, std::move(handler));
         },
-        "genre");
+        isTv ? "tvGenre" : "genre");
 }
 
 void DiscoverController::beginRequest()

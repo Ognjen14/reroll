@@ -284,11 +284,9 @@ void JsonStore::load()
     const int schemaVersion = root.value(QStringLiteral("schemaVersion")).toInt(-1);
     if (schemaVersion != SchemaVersion)
     {
-        RR_LOG_W() << "JsonStore found unexpected schema version, using defaults"
+        RR_LOG_W() << "JsonStore found unexpected schema version, attempting to "
+                      "recover filters/MyList field-by-field anyway"
                    << schemaVersion;
-        m_filters = Domain::FilterCriteria{};
-        m_myList.clear();
-        return;
     }
 
     m_filters = filtersFromJson(root.value(QStringLiteral("filters")));

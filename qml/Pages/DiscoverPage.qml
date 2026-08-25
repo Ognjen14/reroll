@@ -14,6 +14,7 @@ Item {
 
     readonly property bool searchActive: DiscoverController.searchQuery.trim().length > 0
     property bool genresExpanded: false
+    property bool tvGenresActive: false
 
     readonly property int genrePreviewCount: 6
 
@@ -219,12 +220,52 @@ Item {
                     width: parent.width
                     spacing: S.AppTheme.spacing10
 
-                    Text {
-                        text: qsTr("BROWSE BY GENRE")
-                        color: S.AppTheme.textPrimary
-                        font.pixelSize: S.AppTheme.fs14
-                        font.weight: Font.Black
-                        font.letterSpacing: 1
+                    RowLayout {
+                        width: parent.width
+                        spacing: S.AppTheme.spacing8
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("BROWSE BY GENRE")
+                            color: S.AppTheme.textPrimary
+                            font.pixelSize: S.AppTheme.fs14
+                            font.weight: Font.Black
+                            font.letterSpacing: 1
+                        }
+
+                        AppButton {
+                            objectName: "discoverGenreScopeMovies"
+
+                            text: qsTr("Movies")
+                            accessibleName: text
+                            contentRadius: S.AppTheme.radiusPill
+                            backgroundColor: !root.tvGenresActive
+                                             ? S.AppTheme.primary
+                                             : S.AppTheme.surfaceVariant
+                            foregroundColor: !root.tvGenresActive
+                                             ? (S.AppTheme.darkMode ? S.AppTheme.onPrimary : "#FFFFFF")
+                                             : S.AppTheme.textPrimary
+                            borderColor: !root.tvGenresActive ? "transparent" : S.AppTheme.outline
+
+                            onClicked: root.tvGenresActive = false
+                        }
+
+                        AppButton {
+                            objectName: "discoverGenreScopeTv"
+
+                            text: qsTr("TV")
+                            accessibleName: text
+                            contentRadius: S.AppTheme.radiusPill
+                            backgroundColor: root.tvGenresActive
+                                             ? S.AppTheme.primary
+                                             : S.AppTheme.surfaceVariant
+                            foregroundColor: root.tvGenresActive
+                                             ? (S.AppTheme.darkMode ? S.AppTheme.onPrimary : "#FFFFFF")
+                                             : S.AppTheme.textPrimary
+                            borderColor: root.tvGenresActive ? "transparent" : S.AppTheme.outline
+
+                            onClicked: root.tvGenresActive = true
+                        }
                     }
 
                     GridLayout {
@@ -236,7 +277,9 @@ Item {
                         Repeater {
                             id: _genreRepeater
 
-                            model: DiscoverController.genreSections
+                            model: root.tvGenresActive
+                                   ? DiscoverController.tvGenreSections
+                                   : DiscoverController.genreSections
 
                             delegate: Rectangle {
                                 id: _genreCard
@@ -265,15 +308,18 @@ Item {
 
                                 Column {
                                     anchors.left: parent.left
+                                    anchors.right: parent.right
                                     anchors.bottom: parent.bottom
                                     anchors.margins: S.AppTheme.spacing12
                                     spacing: 2
 
                                     Text {
+                                        width: parent.width
                                         text: _genreCard.name.toUpperCase()
                                         color: "white"
                                         font.pixelSize: S.AppTheme.fs14
                                         font.weight: Font.Black
+                                        wrapMode: Text.Wrap
                                     }
 
                                     Text {
@@ -287,13 +333,21 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     enabled: !_genreCard.previewHidden
-                                    onClicked: root.openTitleGrid(
-                                                   _genreCard.name,
-                                                   _genreCard.titleModel,
-                                                   function() {
-                                                       DiscoverController.loadMoreForGenre(
-                                                           _genreCard.genreId)
-                                                   })
+                                    onClicked: {
+                                        const isTv = root.tvGenresActive
+                                        root.openTitleGrid(
+                                            _genreCard.name,
+                                            _genreCard.titleModel,
+                                            function() {
+                                                if (isTv) {
+                                                    DiscoverController.loadMoreForTvGenre(
+                                                        _genreCard.genreId)
+                                                } else {
+                                                    DiscoverController.loadMoreForGenre(
+                                                        _genreCard.genreId)
+                                                }
+                                            })
+                                    }
                                 }
                             }
                         }

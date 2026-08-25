@@ -37,6 +37,8 @@ class DiscoverController final : public QObject
                    READ popularTv CONSTANT FINAL)
     Q_PROPERTY(Reroll::ViewModels::Models::GenreSectionListModel *genreSections
                    READ genreSections CONSTANT FINAL)
+    Q_PROPERTY(Reroll::ViewModels::Models::GenreSectionListModel *tvGenreSections
+                   READ tvGenreSections CONSTANT FINAL)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged FINAL)
 
     Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery
@@ -79,6 +81,7 @@ public:
     [[nodiscard]] ViewModels::Models::TitleListModel *popularMovies() noexcept;
     [[nodiscard]] ViewModels::Models::TitleListModel *popularTv() noexcept;
     [[nodiscard]] ViewModels::Models::GenreSectionListModel *genreSections() noexcept;
+    [[nodiscard]] ViewModels::Models::GenreSectionListModel *tvGenreSections() noexcept;
     [[nodiscard]] bool loading() const noexcept;
 
     [[nodiscard]] QString searchQuery() const noexcept;
@@ -99,6 +102,7 @@ public:
     Q_INVOKABLE void start();
     Q_INVOKABLE void loadMoreTrendingMovies();
     Q_INVOKABLE void loadMoreForGenre(int genreId);
+    Q_INVOKABLE void loadMoreForTvGenre(int genreId);
     Q_INVOKABLE void loadMoreSearchResults();
     Q_INVOKABLE void loadTitleDetails(qint64 tmdbId, int mediaType);
     Q_INVOKABLE void playTitleDetailsTrailer();
@@ -128,8 +132,12 @@ private:
                    const char *label,
                    RequestFn requestFn,
                    PaginationState *paginationState = nullptr);
-    void fetchGenreSections();
-    void fetchGenreRow(std::int32_t genreId, int row, ViewModels::Models::TitleListModel &target);
+    void fetchGenreSections(bool isTv);
+    void fetchGenreRow(bool isTv,
+                       std::int32_t genreId,
+                       int row,
+                       ViewModels::Models::TitleListModel &target);
+    void loadMoreForGenreImpl(bool isTv, int genreId);
     void beginRequest();
     void endRequest();
     void beginLoadingMore();
@@ -154,10 +162,13 @@ private:
     ViewModels::Models::TitleListModel m_popularMovies;
     ViewModels::Models::TitleListModel m_popularTv;
     ViewModels::Models::GenreSectionListModel m_genreSections;
+    ViewModels::Models::GenreSectionListModel m_tvGenreSections;
 
     PaginationState m_trendingMoviesPagination;
     QHash<std::int32_t, PaginationState> m_genrePagination;
     QHash<std::int32_t, ViewModels::Models::TitleListModel *> m_genreTitleModels;
+    QHash<std::int32_t, PaginationState> m_tvGenrePagination;
+    QHash<std::int32_t, ViewModels::Models::TitleListModel *> m_tvGenreTitleModels;
 
     QString m_searchQuery;
     int m_searchScope{ScopeAll};

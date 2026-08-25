@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
 
     app.setOrganizationName("TopicDev");
     app.setApplicationName("Reroll");
-    app.setApplicationVersion("0.0.1");
-    RRLog::install(true,"F:/topic_dev/logs/reroll.log");
+    app.setApplicationVersion("1.1.0");
+    RRLog::install(true, QString());
 
     static AppSettings appSettings;
     qmlRegisterSingletonInstance("com.topicdev.reroll",1,0,"AppSettings",&appSettings);
