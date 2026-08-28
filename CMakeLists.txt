@@ -169,6 +169,7 @@ qt_add_qml_module(appReroll
         qml/Pages/GenreDetailPage.qml
         qml/Pages/MyList.qml
         qml/Pages/HomePage.qml
+        qml/Pages/TestScreen.qml
 )
 
 qt_add_resources(appReroll "ASSETS"

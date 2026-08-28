@@ -66,15 +66,26 @@ Rectangle {
             return AppTheme.surfaceRaised
         }
     }
+    readonly property url iconSource: {
+        switch (mode) {
+        case StatePanel.Empty:
+            return "qrc:/assets/nav/discover.svg"
+        case StatePanel.NetworkError:
+        case StatePanel.RateLimited:
+            return "qrc:/assets/alert-circle.svg"
+        default:
+            return ""
+        }
+    }
 
     signal retryRequested()
 
     implicitWidth: 360
-    implicitHeight: _content.implicitHeight + 40
-    radius: 16
+    implicitHeight: _content.implicitHeight + 48
+    radius: AppTheme.radiusXLarge
     color: panelColor
     border.width: 1
-    border.color: accentColor
+    border.color: Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.35)
 
     Accessible.role: Accessible.StaticText
     Accessible.name: titleText
@@ -86,19 +97,43 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        spacing: 12
+        anchors.leftMargin: 24
+        anchors.rightMargin: 24
+        spacing: AppTheme.spacing16
 
-        BusyIndicator {
-            objectName: "stateBusyIndicator"
+        Item {
+            id: _badge
 
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 36
-            height: visible ? 36 : 0
-            visible: root.loading
-            running: visible
-            Accessible.ignored: true
+            width: 72
+            height: 72
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.14)
+            }
+
+            BusyIndicator {
+                objectName: "stateBusyIndicator"
+
+                anchors.centerIn: parent
+                width: 34
+                height: 34
+                visible: root.loading
+                running: visible
+                Accessible.ignored: true
+            }
+
+            ThemedIcon {
+                anchors.centerIn: parent
+                width: 32
+                height: 32
+                visible: !root.loading
+                source: root.iconSource
+                tintColor: root.accentColor
+                showPlaceholder: false
+            }
         }
 
         Text {
@@ -117,6 +152,7 @@ Rectangle {
             text: root.messageText
             color: AppTheme.textSecondary
             font.pixelSize: AppTheme.fs14
+            lineHeight: 1.3
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
         }
@@ -130,6 +166,9 @@ Rectangle {
             enabled: root.retryEnabled
             text: root.retryText
             accessibleName: root.retryText
+            contentRadius: AppTheme.radiusPill
+            backgroundColor: root.accentColor
+            foregroundColor: "#FFFFFF"
 
             onClicked: root.retryRequested()
         }
