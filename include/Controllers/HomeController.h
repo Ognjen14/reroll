@@ -260,7 +260,6 @@ private:
     QVariantList m_currentStreamingProviders;
     qint64 m_streamingProvidersTmdbId{0};
     bool m_streamingProvidersIsTv{false};
-    bool m_streamingProvidersLoaded{false};
 };
 
 }

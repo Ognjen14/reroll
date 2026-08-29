@@ -8,6 +8,8 @@ namespace Reroll::Infrastructure
 namespace
 {
 
+constexpr int RequestTransferTimeoutMs = 15000;
+
 QString discoverPath(TmdbMediaType mediaType)
 {
     switch (mediaType)
@@ -87,6 +89,7 @@ QNetworkRequest jsonGetRequest(QUrl url,
     }
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(RequestTransferTimeoutMs);
     return request;
 }
 

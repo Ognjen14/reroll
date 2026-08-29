@@ -7,11 +7,27 @@
 
 namespace Reroll::Infrastructure
 {
+namespace
+{
+
+constexpr int ConfigurationRetryIntervalMs = 5000;
+
+}
 
 PosterUrlResolver::PosterUrlResolver(TmdbClient &tmdbClient, QObject *parent)
     : QObject(parent)
+    , m_tmdbClient(tmdbClient)
 {
-    tmdbClient.configuration(
+    m_retryTimer.setSingleShot(true);
+    m_retryTimer.setInterval(ConfigurationRetryIntervalMs);
+    connect(&m_retryTimer, &QTimer::timeout, this, &PosterUrlResolver::fetchConfiguration);
+
+    fetchConfiguration();
+}
+
+void PosterUrlResolver::fetchConfiguration()
+{
+    m_tmdbClient.configuration(
         [this](TmdbClient::ConfigurationResult result) {
             if (auto *configuration = std::get_if<TmdbConfigurationResponseDto>(&result))
             {
@@ -22,7 +38,9 @@ PosterUrlResolver::PosterUrlResolver(TmdbClient &tmdbClient, QObject *parent)
                 return;
             }
 
-            RR_LOG_W() << "PosterUrlResolver failed to load TMDB image configuration";
+            RR_LOG_W() << "PosterUrlResolver failed to load TMDB image configuration,"
+                          " retrying shortly";
+            m_retryTimer.start();
         });
 }
 

@@ -570,6 +570,21 @@ Item {
         }
     }
 
+    StatePanel {
+        id: _errorPanel
+        objectName: "discoverErrorPanel"
+
+        visible: DiscoverController.loadFailed && !root.searchActive
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 2 * S.AppTheme.spacing18, 420)
+        mode: StatePanel.NetworkError
+        titleText: qsTr("Unable to load Discover")
+        messageText: qsTr("Check your connection and try again.")
+        retryVisible: true
+
+        onRetryRequested: DiscoverController.retryInitialLoad()
+    }
+
     Toast {
         id: _toast
         objectName: "discoverToast"

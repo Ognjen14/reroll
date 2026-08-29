@@ -109,6 +109,11 @@ bool DiscoverController::loading() const noexcept
     return m_pendingRequestCount > 0;
 }
 
+bool DiscoverController::loadFailed() const noexcept
+{
+    return m_loadFailed;
+}
+
 QString DiscoverController::searchQuery() const noexcept
 {
     return m_searchQuery;
@@ -208,6 +213,10 @@ void DiscoverController::start()
         return;
     }
     m_started = true;
+    m_loadFailed = false;
+    m_initialSectionsPending = 6;
+    m_initialSectionsSucceeded = 0;
+    emit loadFailedChanged();
 
     RR_LOG_I() << "DiscoverController loading trending, popular, and genre sections";
 
@@ -257,10 +266,12 @@ void DiscoverController::fetchInto(ViewModels::Models::TitleListModel &target,
                     paginationState->nextPage = page->page + 1;
                     paginationState->totalPages = page->totalPages;
                 }
+                trackInitialSectionResult(true);
                 return;
             }
 
             RR_LOG_W() << "Discover section failed" << label;
+            trackInitialSectionResult(false);
         }));
 }
 
@@ -273,8 +284,10 @@ void DiscoverController::fetchGenreSections(bool isTv)
         if (!genres)
         {
             RR_LOG_W() << "Discover genre list failed" << (isTv ? "tv" : "movie");
+            trackInitialSectionResult(false);
             return;
         }
+        trackInitialSectionResult(true);
 
         std::vector<std::pair<std::int32_t, QString>> sections;
         sections.reserve(genres->genres.size());
@@ -448,6 +461,34 @@ void DiscoverController::loadMoreForGenreImpl(bool isTv, int genreId)
                 : m_tmdbClient.discoverMovie(request, std::move(handler));
         },
         isTv ? "tvGenre" : "genre");
+}
+
+void DiscoverController::retryInitialLoad()
+{
+    if (!m_loadFailed)
+    {
+        return;
+    }
+
+    RR_LOG_I() << "Discover retrying initial load after a total failure";
+    m_started = false;
+    start();
+}
+
+void DiscoverController::trackInitialSectionResult(bool succeeded)
+{
+    if (succeeded)
+    {
+        ++m_initialSectionsSucceeded;
+    }
+    --m_initialSectionsPending;
+
+    if (m_initialSectionsPending <= 0 && m_initialSectionsSucceeded == 0 && !m_loadFailed)
+    {
+        RR_LOG_W() << "Discover initial load failed across every section";
+        m_loadFailed = true;
+        emit loadFailedChanged();
+    }
 }
 
 void DiscoverController::beginRequest()

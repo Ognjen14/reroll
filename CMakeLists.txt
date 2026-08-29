@@ -182,6 +182,7 @@ qt_add_resources(appReroll "ASSETS"
     assets/check.png
     assets/tmdb_logo_blue.svg
     assets/start_rating.png
+    assets/star.png
     assets/alert-circle.svg
 
     assets/nav/discover.svg

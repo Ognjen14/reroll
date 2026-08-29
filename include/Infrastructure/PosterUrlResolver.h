@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QUrl>
 
 #include <string>
@@ -29,8 +30,12 @@ signals:
     void configurationLoaded();
 
 private:
+    void fetchConfiguration();
+
+    TmdbClient &m_tmdbClient;
     TmdbImageConfigurationDto m_configuration;
     bool m_loaded{false};
+    QTimer m_retryTimer;
 };
 
 }

@@ -40,6 +40,7 @@ class DiscoverController final : public QObject
     Q_PROPERTY(Reroll::ViewModels::Models::GenreSectionListModel *tvGenreSections
                    READ tvGenreSections CONSTANT FINAL)
     Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged FINAL)
+    Q_PROPERTY(bool loadFailed READ loadFailed NOTIFY loadFailedChanged FINAL)
 
     Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery
                    NOTIFY searchQueryChanged FINAL)
@@ -83,6 +84,7 @@ public:
     [[nodiscard]] ViewModels::Models::GenreSectionListModel *genreSections() noexcept;
     [[nodiscard]] ViewModels::Models::GenreSectionListModel *tvGenreSections() noexcept;
     [[nodiscard]] bool loading() const noexcept;
+    [[nodiscard]] bool loadFailed() const noexcept;
 
     [[nodiscard]] QString searchQuery() const noexcept;
     void setSearchQuery(const QString &query);
@@ -100,6 +102,7 @@ public:
     [[nodiscard]] bool titleDetailsTrailerLoading() const noexcept;
 
     Q_INVOKABLE void start();
+    Q_INVOKABLE void retryInitialLoad();
     Q_INVOKABLE void loadMoreTrendingMovies();
     Q_INVOKABLE void loadMoreForGenre(int genreId);
     Q_INVOKABLE void loadMoreForTvGenre(int genreId);
@@ -109,6 +112,7 @@ public:
 
 signals:
     void loadingChanged();
+    void loadFailedChanged();
     void searchQueryChanged();
     void searchScopeChanged();
     void searchingChanged();
@@ -138,6 +142,7 @@ private:
                        int row,
                        ViewModels::Models::TitleListModel &target);
     void loadMoreForGenreImpl(bool isTv, int genreId);
+    void trackInitialSectionResult(bool succeeded);
     void beginRequest();
     void endRequest();
     void beginLoadingMore();
@@ -189,6 +194,9 @@ private:
     bool m_started{false};
     int m_pendingRequestCount{0};
     int m_loadingMoreCount{0};
+    int m_initialSectionsPending{0};
+    int m_initialSectionsSucceeded{0};
+    bool m_loadFailed{false};
 
     std::uint64_t m_titleDetailsGeneration{0};
     bool m_titleDetailsLoading{false};

@@ -76,6 +76,37 @@ Item{
                 spacing: S.AppTheme.spacing4
 
                 Text {
+                    text: qsTr("SUPPORT")
+                    color: S.AppTheme.textSecondary
+                    font.pixelSize: S.AppTheme.fs12
+                    font.weight: Font.Black
+                    font.letterSpacing: 1
+                }
+
+                Ctrl.SettingsLinkRow {
+                    objectName: "settingsRateAppRow"
+                    width: parent.width
+                    text: qsTr("Rate this app")
+                    showStars: true
+                    url: Qt.platform.os === "android"
+                         ? "market://details?id=com.topicdev.reroll"
+                         : "https://play.google.com/store/apps/details?id=com.topicdev.reroll"
+                }
+            }
+
+            Rectangle {
+                x: 16
+                width: parent.width - 32
+                height: 1
+                color: S.AppTheme.outline
+            }
+
+            Column {
+                x: 16
+                width: parent.width - 32
+                spacing: S.AppTheme.spacing4
+
+                Text {
                     text: qsTr("LEGAL")
                     color: S.AppTheme.textSecondary
                     font.pixelSize: S.AppTheme.fs12

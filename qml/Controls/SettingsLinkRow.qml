@@ -9,6 +9,7 @@ Item {
 
     property string text
     property url url
+    property bool showStars: false
 
     signal clicked()
 
@@ -42,6 +43,24 @@ Item {
             color: AppTheme.textPrimary
             font.pixelSize: AppTheme.fs14
             font.weight: Font.Medium
+        }
+
+        Row {
+            visible: root.showStars
+            Layout.alignment: Qt.AlignVCenter
+            spacing: AppTheme.spacing2
+
+            Repeater {
+                model: 5
+
+                Image {
+                    width: 14
+                    height: 14
+                    source: "qrc:/assets/star.png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+            }
         }
 
         Canvas {

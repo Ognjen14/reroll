@@ -528,7 +528,7 @@ void HomeController::fetchStreamingProviders()
 {
     if (!hasSuggestion())
     {
-        m_streamingProvidersLoaded = false;
+        m_streamingProvidersTmdbId = 0;
         if (!m_currentStreamingProviders.isEmpty())
         {
             m_currentStreamingProviders.clear();
@@ -540,14 +540,12 @@ void HomeController::fetchStreamingProviders()
     const qint64 tmdbId = currentTmdbId();
     const bool requestedIsTv = isTv();
 
-    if (m_streamingProvidersLoaded
-        && tmdbId == m_streamingProvidersTmdbId
+    if (tmdbId == m_streamingProvidersTmdbId
         && requestedIsTv == m_streamingProvidersIsTv)
     {
         return;
     }
 
-    m_streamingProvidersLoaded = true;
     m_streamingProvidersTmdbId = tmdbId;
     m_streamingProvidersIsTv = requestedIsTv;
     m_currentStreamingProviders.clear();
@@ -576,6 +574,11 @@ void HomeController::fetchStreamingProviders()
             {
                 RR_LOG_W() << "Streaming providers lookup failed" << tmdbId
                            << "category" << static_cast<int>(error->category());
+                if (m_streamingProvidersTmdbId == tmdbId
+                    && m_streamingProvidersIsTv == requestedIsTv)
+                {
+                    m_streamingProvidersTmdbId = 0;
+                }
                 return;
             }
 
