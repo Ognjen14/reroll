@@ -8,7 +8,7 @@ namespace Reroll::Infrastructure
 namespace
 {
 
-constexpr int RequestTransferTimeoutMs = 15000;
+constexpr int RequestTransferTimeoutMs = 5000;
 
 QString discoverPath(TmdbMediaType mediaType)
 {

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 import "../Singletons" as S
@@ -15,6 +16,12 @@ Item {
     readonly property bool searchActive: DiscoverController.searchQuery.trim().length > 0
     property bool genresExpanded: false
     property bool tvGenresActive: false
+
+    readonly property bool hasDiscoverContent: _trendingMoviesRow.count > 0
+                                                || _trendingTvRow.count > 0
+                                                || _popularMoviesRow.count > 0
+                                                || _popularTvRow.count > 0
+                                                || _genreRepeater.count > 0
 
     readonly property int genrePreviewCount: 6
 
@@ -173,7 +180,37 @@ Item {
             cellHeight: cellWidth * S.AppTheme.posterAspectRatio + 48
             model: DiscoverController.searchResults
 
-            onAtYEndChanged: if (atYEnd) DiscoverController.loadMoreSearchResults()
+            ScrollBar.vertical: ScrollBar {
+                id: _scrollBar
+
+                policy: ScrollBar.AsNeeded
+
+                background: Rectangle {
+                    implicitWidth: 6
+                    radius: width / 2
+                    color: S.AppTheme.outline
+                    opacity: 0.4
+                }
+
+                contentItem: Rectangle {
+                    implicitWidth: 6
+                    radius: width / 2
+                    color: S.AppTheme.primary
+                    opacity: _scrollBar.pressed ? 1.0 : 0.7
+
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                }
+            }
+
+            function maybeLoadMore() {
+                if (contentHeight <= height
+                    || contentY + height >= contentHeight - cellHeight) {
+                    DiscoverController.loadMoreSearchResults()
+                }
+            }
+
+            onContentHeightChanged: Qt.callLater(maybeLoadMore)
+            onContentYChanged: Qt.callLater(maybeLoadMore)
 
             delegate: DiscoverPosterCardDelegate {
                 width: _searchGrid.cellWidth
@@ -568,6 +605,20 @@ Item {
                 }
             }
         }
+    }
+
+    StatePanel {
+        id: _loadingPanel
+        objectName: "discoverLoadingPanel"
+
+        visible: DiscoverController.loading
+                 && !root.hasDiscoverContent
+                 && !DiscoverController.loadFailed
+                 && !root.searchActive
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 2 * S.AppTheme.spacing18, 420)
+        mode: StatePanel.Loading
+        titleText: qsTr("Loading Discover")
     }
 
     StatePanel {

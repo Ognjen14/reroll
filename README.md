@@ -67,11 +67,13 @@ appears in QML, logs, or persisted data.
 ### Configure your TMDB credential
 
 ```bash
-cp include/Config/ApiKeys.h.example include/Config/ApiKeys.h
+python scripts/generate_api_key.py
 ```
 
-Then edit `include/Config/ApiKeys.h` and replace the placeholder with your
-own TMDB credential. This file is gitignored - it never gets committed.
+This prompts for your TMDB credential and writes `include/Config/ApiKeys.h`
+for you, with the key stored XOR-obfuscated rather than as a plain string.
+This file is gitignored - it never gets committed. See
+[api-key-setup.md](include/Config/api-key-setup.md) for details.
 
 ### Build (desktop)
 

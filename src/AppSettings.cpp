@@ -1,4 +1,5 @@
 #include "include/AppSettings.h"
+#include <QCoreApplication>
 #include <QStringList>
 
 AppSettings::AppSettings(QObject *parent)
@@ -74,4 +75,9 @@ void AppSettings::setFontSizeScale(double scale)
 
     m_settings.setValue("fontSize", scale);
     emit fontSizeScaleChanged();
+}
+
+QString AppSettings::appVersion() const
+{
+    return QCoreApplication::applicationVersion();
 }

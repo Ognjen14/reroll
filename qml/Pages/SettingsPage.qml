@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../Controls" as Ctrl
 import "../Singletons" as S
+import com.topicdev.reroll 1.0
 Item{
     id: root
     Flickable {
@@ -127,6 +128,17 @@ Item{
                     text: qsTr("Privacy Policy")
                     url: "https://sites.google.com/view/rerollapp/privacy-policy"
                 }
+            }
+
+            Text {
+                objectName: "settingsAppVersion"
+                x: 16
+                width: parent.width - 32
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Reroll v%1").arg(AppSettings.appVersion)
+                color: S.AppTheme.textSecondary
+                font.pixelSize: S.AppTheme.fs14
+                font.weight: Font.Medium
             }
         }
     }

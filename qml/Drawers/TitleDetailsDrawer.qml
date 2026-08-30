@@ -215,6 +215,12 @@ Basic.Drawer {
                     }
                 }
 
+                TmdbAttribution {
+                    x: parent.horizontalInset
+                    objectName: "titleDetailsTmdbAttribution"
+                    compact: true
+                }
+
                 Column {
                     x: parent.horizontalInset
                     width: parent.width - 2 * parent.horizontalInset

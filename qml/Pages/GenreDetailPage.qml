@@ -72,7 +72,37 @@ Item {
             cellHeight: cellWidth * S.AppTheme.posterAspectRatio + 48
             model: root.titleModel
 
-            onAtYEndChanged: if (atYEnd) root.loadMoreRequested()
+            ScrollBar.vertical: ScrollBar {
+                id: _scrollBar
+
+                policy: ScrollBar.AsNeeded
+
+                background: Rectangle {
+                    implicitWidth: 6
+                    radius: width / 2
+                    color: S.AppTheme.outline
+                    opacity: 0.4
+                }
+
+                contentItem: Rectangle {
+                    implicitWidth: 6
+                    radius: width / 2
+                    color: S.AppTheme.primary
+                    opacity: _scrollBar.pressed ? 1.0 : 0.7
+
+                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                }
+            }
+
+            function maybeLoadMore() {
+                if (contentHeight <= height
+                    || contentY + height >= contentHeight - cellHeight) {
+                    root.loadMoreRequested()
+                }
+            }
+
+            onContentHeightChanged: Qt.callLater(maybeLoadMore)
+            onContentYChanged: Qt.callLater(maybeLoadMore)
 
             delegate: DiscoverPosterCardDelegate {
                 width: _grid.cellWidth
