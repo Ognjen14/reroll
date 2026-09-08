@@ -148,22 +148,15 @@ Item {
             Repeater {
                 model: root.streamingProviders
 
-                delegate: Rectangle {
+                delegate: GenreTag {
                     required property var modelData
 
-                    width: 24
-                    height: 24
-                    radius: AppTheme.radiusSmall
-                    color: root.chipBackgroundColor
-
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 3
-                        source: modelData.logoUrl
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        smooth: true
-                    }
+                    text: modelData.name
+                    iconSource: modelData.logoUrl
+                    iconSize: 20
+                    backgroundColor: root.chipBackgroundColor
+                    foregroundColor: root.overlayTextColor
+                    borderColor: "transparent"
                 }
             }
         }
