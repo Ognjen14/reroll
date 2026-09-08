@@ -5,9 +5,10 @@
 AppSettings::AppSettings(QObject *parent)
     : QObject(parent),
     m_settings("TopicDev", "Reroll"),
-    m_darkMode(m_settings.value("darkMode", false).toBool())
+    m_darkMode(m_settings.value("darkMode", false).toBool()),
+    m_appLaunchCount(m_settings.value("appLaunchCount", 0).toInt() + 1)
 {
-
+    m_settings.setValue("appLaunchCount", m_appLaunchCount);
 }
 
 bool AppSettings::darkMode() const
@@ -80,4 +81,9 @@ void AppSettings::setFontSizeScale(double scale)
 QString AppSettings::appVersion() const
 {
     return QCoreApplication::applicationVersion();
+}
+
+int AppSettings::appLaunchCount() const
+{
+    return m_appLaunchCount;
 }

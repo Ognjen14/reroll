@@ -12,6 +12,7 @@ class AppSettings : public QObject
     Q_PROPERTY(int accentIndex READ accentIndex WRITE setAccentIndex NOTIFY accentIndexChanged FINAL)
     Q_PROPERTY(double fontSizeScale READ fontSizeScale WRITE setFontSizeScale NOTIFY fontSizeScaleChanged FINAL)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT FINAL)
+    Q_PROPERTY(int appLaunchCount READ appLaunchCount CONSTANT FINAL)
 
 
 public:
@@ -30,6 +31,7 @@ public:
     void setFontSizeScale(double scale);
 
     QString appVersion() const;
+    int appLaunchCount() const;
 
     ///
     /// \brief themeInitialized
@@ -49,4 +51,5 @@ signals:
 private:
     QSettings m_settings;
     bool    m_darkMode;
+    int     m_appLaunchCount;
 };

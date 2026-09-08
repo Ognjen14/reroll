@@ -68,6 +68,27 @@ Item {
         objectName: "discoverTitleDetailsDrawer"
     }
 
+    TutorialSheet {
+        id: _tutorialSheet
+        objectName: "discoverTutorialSheet"
+
+        heading: qsTr("How Discover Works")
+        sections: [
+            {
+                heading: qsTr("Search"),
+                body: qsTr("Search for a specific movie or TV show by title.")
+            },
+            {
+                heading: qsTr("Browse"),
+                body: qsTr("Scroll down to browse trending, popular, and titles by genre.")
+            },
+            {
+                heading: qsTr("Quick actions"),
+                body: qsTr("Tap the heart or checkmark badge on any poster to save it to your watchlist or mark it watched. Tap the poster itself for more details.")
+            }
+        ]
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: S.AppTheme.spacing18
@@ -116,6 +137,21 @@ Item {
 
                 onTextEdited: DiscoverController.searchQuery = text
             }
+        }
+
+        AppButton {
+            objectName: "discoverTutorialButton"
+
+            Layout.alignment: Qt.AlignRight
+            visible: AppSettings.appLaunchCount <= 2 && !root.searchActive
+            text: qsTr("Tips")
+            accessibleName: qsTr("How Discover works")
+            contentRadius: S.AppTheme.radiusPill
+            backgroundColor: S.AppTheme.surfaceVariant
+            foregroundColor: S.AppTheme.textSecondary
+            borderColor: "transparent"
+
+            onClicked: _tutorialSheet.open()
         }
 
         ListView {

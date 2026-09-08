@@ -162,6 +162,7 @@ qt_add_qml_module(appReroll
         #Drawers
         qml/Drawers/FilterDrawer.qml
         qml/Drawers/TitleDetailsDrawer.qml
+        qml/Drawers/TutorialSheet.qml
 
         #Pages
         qml/Pages/SettingsPage.qml

@@ -32,6 +32,7 @@ Basic.Drawer {
             : implicitHeight
     modal: true
     dim: true
+    interactive: false
     closePolicy: Basic.Popup.CloseOnEscape
                  | Basic.Popup.CloseOnPressOutside
 
@@ -70,7 +71,7 @@ Basic.Drawer {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: AppTheme.spacing20
+            Layout.preferredHeight: 44
 
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -80,6 +81,24 @@ Basic.Drawer {
                 height: 4
                 radius: 2
                 color: AppTheme.outlineStrong
+            }
+
+            AppButton {
+                objectName: "titleDetailsCloseButton"
+
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.rightMargin: AppTheme.spacing12
+                anchors.topMargin: AppTheme.spacing4
+                shape: AppButton.CircleShape
+                shapeSize: 32
+                imageSource: "qrc:/assets/reroll_page/x.png"
+                imageSize: 14
+                backgroundColor: AppTheme.surfaceVariant
+                foregroundColor: AppTheme.textSecondary
+                accessibleName: qsTr("Close")
+
+                onClicked: root.close()
             }
         }
 

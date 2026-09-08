@@ -50,6 +50,27 @@ Item {
         id: _filterDrawer
     }
 
+    TutorialSheet {
+        id: _tutorialSheet
+        objectName: "homeTutorialSheet"
+
+        heading: qsTr("How Reroll Works")
+        sections: [
+            {
+                heading: qsTr("Reroll"),
+                body: qsTr("Tap the big Reroll button to get a new suggestion. Don't like it? Reroll again.")
+            },
+            {
+                heading: qsTr("Filters"),
+                body: qsTr("Tap Filters to narrow results by media type, genre, year, and rating.")
+            },
+            {
+                heading: qsTr("Watchlist & watched"),
+                body: qsTr("Save a title for later or mark it watched right from the action bar. The X hides a title for good.")
+            }
+        ]
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -155,42 +176,66 @@ Item {
                     Layout.fillWidth: true
                 }
 
-                AppButton {
-                    objectName: "filtersHeaderButton"
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignRight
+                    spacing: S.AppTheme.spacing6
 
-                    text: qsTr("Filters")
-                    accessibleName: qsTr("Open filters")
-                    contentRadius: S.AppTheme.radiusPill
-                    backgroundColor: HomeController.hasSuggestion
-                                     ? Qt.rgba(1, 1, 1, 0.14)
-                                     : S.AppTheme.surfaceVariant
-                    foregroundColor: HomeController.hasSuggestion
-                                     ? "white"
-                                     : S.AppTheme.textPrimary
-                    borderColor: "transparent"
+                    AppButton {
+                        objectName: "filtersHeaderButton"
 
-                    onClicked: _filterDrawer.open()
+                        text: qsTr("Filters")
+                        accessibleName: qsTr("Open filters")
+                        contentRadius: S.AppTheme.radiusPill
+                        backgroundColor: HomeController.hasSuggestion
+                                         ? Qt.rgba(1, 1, 1, 0.14)
+                                         : S.AppTheme.surfaceVariant
+                        foregroundColor: HomeController.hasSuggestion
+                                         ? "white"
+                                         : S.AppTheme.textPrimary
+                        borderColor: "transparent"
 
-                    Rectangle {
-                        objectName: "filtersHeaderBadge"
+                        onClicked: _filterDrawer.open()
 
-                        visible: root.activeFilterCount > 0
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.rightMargin: -2
-                        anchors.topMargin: -2
-                        width: 18
-                        height: 18
-                        radius: 9
-                        color: S.AppTheme.error
+                        Rectangle {
+                            objectName: "filtersHeaderBadge"
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.activeFilterCount
-                            color: "white"
-                            font.pixelSize: S.AppTheme.fs10
-                            font.weight: Font.Bold
+                            visible: root.activeFilterCount > 0
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.rightMargin: -2
+                            anchors.topMargin: -2
+                            width: 18
+                            height: 18
+                            radius: 9
+                            color: S.AppTheme.error
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.activeFilterCount
+                                color: "white"
+                                font.pixelSize: S.AppTheme.fs10
+                                font.weight: Font.Bold
+                            }
                         }
+                    }
+
+                    AppButton {
+                        objectName: "homeTutorialButton"
+
+                        Layout.alignment: Qt.AlignRight
+                        visible: AppSettings.appLaunchCount <= 2
+                        text: qsTr("Tips")
+                        accessibleName: qsTr("How Reroll works")
+                        contentRadius: S.AppTheme.radiusPill
+                        backgroundColor: HomeController.hasSuggestion
+                                         ? Qt.rgba(1, 1, 1, 0.1)
+                                         : S.AppTheme.surfaceVariant
+                        foregroundColor: HomeController.hasSuggestion
+                                         ? Qt.rgba(1, 1, 1, 0.85)
+                                         : S.AppTheme.textSecondary
+                        borderColor: "transparent"
+
+                        onClicked: _tutorialSheet.open()
                     }
                 }
             }
