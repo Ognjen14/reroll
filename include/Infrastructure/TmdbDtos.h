@@ -43,6 +43,7 @@ struct TmdbDiscoverRequestDto final
     std::vector<TmdbGenreId> genreIds;
     TmdbGenreMatchMode genreMatchMode{TmdbGenreMatchMode::Or};
     std::optional<std::string> originalLanguage{"en"};
+    bool sortByVoteCount{false};
 };
 
 struct TmdbConfigurationRequestDto final

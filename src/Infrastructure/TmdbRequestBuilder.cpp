@@ -143,6 +143,10 @@ QNetworkRequest TmdbRequestBuilder::build(
         query.addQueryItem(QStringLiteral("with_original_language"),
                            QString::fromStdString(*request.originalLanguage));
     }
+    if (request.sortByVoteCount)
+    {
+        query.addQueryItem(QStringLiteral("sort_by"), QStringLiteral("vote_count.desc"));
+    }
 
     return jsonGetRequest(endpointUrl(access.baseUrl, discoverPath(request.mediaType)),
                           access.apiKey,

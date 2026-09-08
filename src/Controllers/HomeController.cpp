@@ -23,6 +23,7 @@ namespace
 
 constexpr quint32 RandomStartPageMaximum = 20;
 constexpr Domain::CandidatePool::SizeType ReplenishmentThreshold = 5;
+constexpr std::int64_t MinimumEligibleVoteCount = 20;
 
 Infrastructure::TmdbGenreMatchMode toTmdbGenreMatchMode(Domain::GenreMatchMode mode)
 {
@@ -706,6 +707,7 @@ Infrastructure::TmdbDiscoverRequestDto HomeController::buildRequest(
     request.genreIds.assign(filters.genreIds().cbegin(), filters.genreIds().cend());
     request.genreMatchMode = toTmdbGenreMatchMode(filters.genreMatchMode());
     request.originalLanguage = filters.originalLanguage();
+    request.sortByVoteCount = true;
     return request;
 }
 
@@ -886,6 +888,11 @@ bool HomeController::isEligible(const Domain::Candidate &candidate) const
         return false;
     }
 
+    if (candidate.voteCount() < MinimumEligibleVoteCount)
+    {
+        return false;
+    }
+
     return !m_eligibilityFilter || m_eligibilityFilter(candidate.identity());
 }
 
@@ -966,7 +973,22 @@ HomeController::PickResult HomeController::pickAndSelect(bool isReroll)
         return PickResult::Pending;
     }
 
-    const bool poolHasAnything = !m_moviePool.empty() || !m_tvPool.empty();
+    const auto poolMeetsVoteFloor = [](const Domain::CandidatePool &pool, bool active) {
+        if (!active)
+        {
+            return false;
+        }
+        for (const Domain::Candidate &candidate : pool.candidates())
+        {
+            if (candidate.voteCount() >= MinimumEligibleVoteCount)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool poolHasAnything =
+        poolMeetsVoteFloor(m_moviePool, m_movieActive) || poolMeetsVoteFloor(m_tvPool, m_tvActive);
     if (poolHasAnything)
     {
         RR_LOG_I() << "All matching titles have been shown, recycling the pool";

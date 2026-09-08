@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
     app.setOrganizationName("TopicDev");
     app.setApplicationName("Reroll");
-    app.setApplicationVersion("1.1.3");
+    app.setApplicationVersion("1.1.4");
     RRLog::install(true, QString());
 
     static AppSettings appSettings;

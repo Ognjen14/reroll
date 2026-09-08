@@ -13,6 +13,7 @@ Item {
         Tv
     }
 
+    property var tmdbId: 0
     property string title
     property int year: 0
     property int mediaType: SuggestionCard.NoMedia
@@ -43,6 +44,9 @@ Item {
     readonly property string metaText: [mediaTypeText, yearText]
                                        .filter(value => value.length > 0)
                                        .join("  ·  ")
+    readonly property url tmdbUrl: tmdbId > 0
+        ? "https://www.themoviedb.org/%1/%2".arg(mediaType === SuggestionCard.Tv ? "tv" : "movie").arg(tmdbId)
+        : "https://www.themoviedb.org"
 
     implicitWidth: wideLayout ? 900 : 360
     implicitHeight: _content.implicitHeight
@@ -70,7 +74,8 @@ Item {
             objectName: "suggestionTmdbAttribution"
 
             compact: true
-            logoHeight: 12
+            logoHeight: 18
+            targetUrl: root.tmdbUrl
         }
         Flow {
             objectName: "suggestionMetaFlow"

@@ -252,6 +252,7 @@ Item {
                 visible: root.cardVisible
                 wideLayout: root.wideLayout
                 recycled: HomeController.recycled
+                tmdbId: HomeController.currentTmdbId
                 title: HomeController.title
                 year: HomeController.releaseYear
                 mediaType: HomeController.isTv ? SuggestionCard.Tv : SuggestionCard.Movie

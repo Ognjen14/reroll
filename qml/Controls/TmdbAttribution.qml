@@ -10,6 +10,7 @@ Item {
     property bool compact: true
     property color textColor: AppTheme.textSecondary
     property real logoHeight: compact ? 16 : 26
+    property url targetUrl: "https://www.themoviedb.org"
 
     readonly property url logoSource: "qrc:/assets/tmdb_logo_blue.svg"
     readonly property real logoAspectRatio: 273.42 / 35.52
@@ -17,7 +18,7 @@ Item {
     signal opened()
 
     function openTmdbWebsite() {
-        Qt.openUrlExternally("https://www.themoviedb.org")
+        Qt.openUrlExternally(root.targetUrl)
         root.opened()
     }
 
