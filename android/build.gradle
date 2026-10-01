@@ -78,8 +78,8 @@ android {
         minSdkVersion qtMinSdkVersion
         targetSdkVersion 36
         ndk.abiFilters = qtTargetAbiList.split(",")
-        versionCode 7
-        versionName "1.1.4"
+        versionCode 8
+        versionName "1.2.0"
         applicationId "com.topicdev.reroll"
     }
 }

@@ -119,14 +119,40 @@ Item{
                     objectName: "settingsTermsOfUseRow"
                     width: parent.width
                     text: qsTr("Terms of Use")
-                    url: "https://sites.google.com/view/rerollapp/terms-of-use"
+                    url: "https://makimedia.org/reroll/terms.html"
                 }
 
                 Ctrl.SettingsLinkRow {
                     objectName: "settingsPrivacyPolicyRow"
                     width: parent.width
                     text: qsTr("Privacy Policy")
-                    url: "https://sites.google.com/view/rerollapp/privacy-policy"
+                    url: "https://makimedia.org/reroll/privacy.html"
+                }
+            }
+
+            Rectangle {
+                x: 16
+                width: parent.width - 32
+                height: 1
+                color: S.AppTheme.outline
+            }
+
+            Column {
+                x: 16
+                width: parent.width - 32
+                spacing: S.AppTheme.spacing10
+
+                Text {
+                    text: qsTr("MORE FROM TOPICDEV")
+                    color: S.AppTheme.textSecondary
+                    font.pixelSize: S.AppTheme.fs12
+                    font.weight: Font.Black
+                    font.letterSpacing: 1
+                }
+
+                Ctrl.MakimediaPromoCard {
+                    objectName: "settingsMakimediaCard"
+                    width: parent.width
                 }
             }
 

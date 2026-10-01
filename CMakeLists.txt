@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(reroll VERSION 0.1 LANGUAGES CXX)
+project(reroll VERSION 1.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -142,6 +142,7 @@ qt_add_qml_module(appReroll
         qml/Controls/GenreChipDelegate.qml
         qml/Controls/GenreMatchModeSelector.qml
         qml/Controls/GenreTag.qml
+        qml/Controls/MakimediaPromoCard.qml
         qml/Controls/MediaTypeSelector.qml
         qml/Controls/PosterImage.qml
         qml/Controls/PosterPlaceholder.qml
@@ -185,6 +186,7 @@ qt_add_resources(appReroll "ASSETS"
     assets/start_rating.png
     assets/star.png
     assets/alert-circle.svg
+    assets/makimedia_icon.png
 
     assets/nav/discover.svg
     assets/nav/home.svg
