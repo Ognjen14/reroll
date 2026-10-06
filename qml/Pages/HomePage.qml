@@ -12,11 +12,19 @@ Item {
     readonly property bool suggestionReady: HomeController.state === HomeController.Ready
     readonly property bool hasSuggestion: HomeController.hasSuggestion
     readonly property bool cardVisible: hasSuggestion
+                                        && HomeController.state !== HomeController.Empty
     readonly property bool showingStatePanel: !suggestionReady || !hasSuggestion
     readonly property int wideLayoutThreshold: S.AppTheme.breakpointTablet
     readonly property bool wideLayout: width >= wideLayoutThreshold
+    readonly property int defaultMediaType: 0
+    property real dragOffsetX: 0
+    readonly property real dragFade: width > 0
+                                     ? Math.min(Math.abs(dragOffsetX) / width, 0.5)
+                                     : 0
     readonly property int activeFilterCount: {
         let count = 0
+        if (HomeController.appliedMediaType !== root.defaultMediaType)
+            count++
         if (HomeController.appliedMinimumYear > 0 || HomeController.appliedMaximumYear > 0)
             count++
         if (HomeController.appliedMinimumRating > 0)
@@ -26,6 +34,94 @@ Item {
         if (HomeController.appliedExcludeWatched)
             count++
         return count
+    }
+
+    readonly property var filterSummary: {
+        const items = []
+        switch (HomeController.appliedMediaType) {
+        case 1:
+            items.push(qsTr("TV"))
+            break
+        case 2:
+            items.push(qsTr("Movies & TV"))
+            break
+        default:
+            items.push(qsTr("Movies"))
+            break
+        }
+
+        const minimumYear = HomeController.appliedMinimumYear
+        const maximumYear = HomeController.appliedMaximumYear
+        if (minimumYear > 0 && maximumYear > 0)
+            items.push(minimumYear === maximumYear
+                       ? minimumYear.toString()
+                       : qsTr("%1-%2").arg(minimumYear).arg(maximumYear))
+        else if (minimumYear > 0)
+            items.push(qsTr("From %1").arg(minimumYear))
+        else if (maximumYear > 0)
+            items.push(qsTr("Up to %1").arg(maximumYear))
+
+        if (HomeController.appliedMinimumRating > 0)
+            items.push(qsTr("%1+ rating").arg(HomeController.appliedMinimumRating.toFixed(1)))
+
+        const genreNames = HomeController.appliedGenreNames
+        const visibleGenreCount = genreNames.length > 3 ? 2 : genreNames.length
+        for (let i = 0; i < visibleGenreCount; ++i)
+            items.push(genreNames[i])
+        if (genreNames.length > visibleGenreCount)
+            items.push(qsTr("+%1 genres").arg(genreNames.length - visibleGenreCount))
+        else if (genreNames.length === 0 && HomeController.appliedGenreCount > 0)
+            items.push(qsTr("%n genre(s)", "", HomeController.appliedGenreCount))
+
+        if (HomeController.appliedExcludeWatched)
+            items.push(qsTr("Unwatched"))
+
+        return items
+    }
+
+    function openDetails() {
+        if (!HomeController.hasSuggestion)
+            return
+        _detailsDrawer.openFor(HomeController.currentTmdbId,
+                               HomeController.isTv ? 1 : 0,
+                               HomeController.title,
+                               HomeController.releaseYear,
+                               HomeController.currentPosterPath,
+                               HomeController.rating,
+                               HomeController.currentGenreIds,
+                               HomeController.voteCount)
+    }
+
+    function requestReroll() {
+        if (!HomeController.canReroll)
+            return
+        _actionBar.spinReroll()
+        HomeController.reroll()
+    }
+
+    function requestPrevious() {
+        if (!HomeController.previous())
+            _toast.show(qsTr("No previous suggestion"))
+    }
+
+    function hideCurrent() {
+        const tmdbId = HomeController.currentTmdbId
+        const mediaType = HomeController.isTv ? 1 : 0
+        const title = HomeController.title
+        const releaseYear = HomeController.releaseYear
+        const genreIds = HomeController.currentGenreIds
+        const posterPath = HomeController.currentPosterPath
+        const rating = HomeController.rating
+        const voteCount = HomeController.voteCount
+
+        MyListController.setHidden(tmdbId, mediaType, title, releaseYear, genreIds,
+                                   posterPath, rating, voteCount, true)
+        HomeController.reroll()
+        _toast.show(qsTr("Won't show this title again"), qsTr("Undo"), function() {
+            MyListController.setHidden(tmdbId, mediaType, title, releaseYear, genreIds,
+                                       posterPath, rating, voteCount, false)
+            HomeController.previous()
+        })
     }
 
     function statePanelMode() {
@@ -41,6 +137,14 @@ Item {
         }
     }
 
+    Connections {
+        target: HomeController
+
+        function onMoreTitlesFailed() {
+            _toast.show(qsTr("Couldn't load more titles. Tap Reroll to try again."))
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: S.AppTheme.background
@@ -50,25 +154,19 @@ Item {
         id: _filterDrawer
     }
 
-    TutorialSheet {
-        id: _tutorialSheet
-        objectName: "homeTutorialSheet"
+    TitleDetailsDrawer {
+        id: _detailsDrawer
+        objectName: "homeTitleDetailsDrawer"
+    }
 
-        heading: qsTr("How Reroll Works")
-        sections: [
-            {
-                heading: qsTr("Reroll"),
-                body: qsTr("Tap the big Reroll button to get a new suggestion. Don't like it? Reroll again.")
-            },
-            {
-                heading: qsTr("Filters"),
-                body: qsTr("Tap Filters to narrow results by media type, genre, year, and rating.")
-            },
-            {
-                heading: qsTr("Watchlist & watched"),
-                body: qsTr("Save a title for later or mark it watched right from the action bar. The X hides a title for good.")
-            }
-        ]
+    NumberAnimation {
+        id: _settleAnimation
+
+        target: root
+        property: "dragOffsetX"
+        to: 0
+        duration: 180
+        easing.type: Easing.OutCubic
     }
 
     ColumnLayout {
@@ -124,6 +222,11 @@ Item {
                 asynchronous: true
                 cache: true
                 visible: HomeController.hasSuggestion
+                opacity: 1 - root.dragFade
+
+                transform: Translate {
+                    x: root.dragOffsetX * 0.5
+                }
             }
 
             Rectangle {
@@ -153,7 +256,58 @@ Item {
                 }
             }
 
+            MouseArea {
+                id: _swipeArea
+                objectName: "homeSwipeArea"
+
+                property real startX: 0
+                property real startY: 0
+                readonly property real swipeThreshold: Math.min(width * 0.22, 120)
+                readonly property real tapTolerance: 12
+
+                anchors.fill: parent
+                enabled: HomeController.hasSuggestion && root.suggestionReady
+                preventStealing: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                onPressed: function(mouse) {
+                    _settleAnimation.stop()
+                    startX = mouse.x
+                    startY = mouse.y
+                    root.dragOffsetX = 0
+                }
+
+                onPositionChanged: function(mouse) {
+                    const dx = mouse.x - startX
+                    const dy = mouse.y - startY
+                    root.dragOffsetX = Math.abs(dx) > Math.abs(dy) ? dx : 0
+                }
+
+                onReleased: function(mouse) {
+                    const dx = mouse.x - startX
+                    const dy = mouse.y - startY
+                    _settleAnimation.start()
+
+                    if (Math.abs(dx) < tapTolerance && Math.abs(dy) < tapTolerance) {
+                        root.openDetails()
+                        return
+                    }
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx <= -swipeThreshold)
+                            root.requestReroll()
+                        else if (dx >= swipeThreshold)
+                            root.requestPrevious()
+                    } else if (dy <= -swipeThreshold) {
+                        root.openDetails()
+                    }
+                }
+
+                onCanceled: _settleAnimation.start()
+            }
+
             RowLayout {
+                id: _heroHeader
                 objectName: "homeHeroHeader"
 
                 anchors.left: parent.left
@@ -165,6 +319,7 @@ Item {
                 spacing: S.AppTheme.spacing12
 
                 Text {
+                    Layout.alignment: Qt.AlignTop
                     text: qsTr("REROLL")
                     color: HomeController.hasSuggestion ? "white" : S.AppTheme.textPrimary
                     font.pixelSize: S.AppTheme.fs22
@@ -180,64 +335,120 @@ Item {
                     Layout.alignment: Qt.AlignRight
                     spacing: S.AppTheme.spacing6
 
-                    AppButton {
-                        objectName: "filtersHeaderButton"
+                    RowLayout {
+                        Layout.alignment: Qt.AlignRight
+                        spacing: S.AppTheme.spacing6
 
-                        text: qsTr("Filters")
-                        accessibleName: qsTr("Open filters")
-                        contentRadius: S.AppTheme.radiusPill
-                        backgroundColor: HomeController.hasSuggestion
-                                         ? Qt.rgba(1, 1, 1, 0.14)
-                                         : S.AppTheme.surfaceVariant
-                        foregroundColor: HomeController.hasSuggestion
-                                         ? "white"
-                                         : S.AppTheme.textPrimary
-                        borderColor: "transparent"
+                        AppButton {
+                            objectName: "homePreviousButton"
 
-                        onClicked: _filterDrawer.open()
+                            visible: HomeController.canGoBack && HomeController.hasSuggestion
+                            enabled: root.suggestionReady
+                            text: qsTr("Previous")
+                            accessibleName: qsTr("Show previous suggestion")
+                            contentRadius: S.AppTheme.radiusPill
+                            backgroundColor: HomeController.hasSuggestion
+                                             ? Qt.rgba(1, 1, 1, 0.14)
+                                             : S.AppTheme.surfaceVariant
+                            foregroundColor: HomeController.hasSuggestion
+                                             ? "white"
+                                             : S.AppTheme.textPrimary
+                            borderColor: "transparent"
 
-                        Rectangle {
-                            objectName: "filtersHeaderBadge"
+                            onClicked: root.requestPrevious()
+                        }
 
-                            visible: root.activeFilterCount > 0
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.rightMargin: -2
-                            anchors.topMargin: -2
-                            width: 18
-                            height: 18
-                            radius: 9
-                            color: S.AppTheme.error
+                        AppButton {
+                            objectName: "filtersHeaderButton"
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.activeFilterCount
-                                color: "white"
-                                font.pixelSize: S.AppTheme.fs10
-                                font.weight: Font.Bold
+                            text: qsTr("Filters")
+                            accessibleName: qsTr("Open filters")
+                            contentRadius: S.AppTheme.radiusPill
+                            backgroundColor: HomeController.hasSuggestion
+                                             ? Qt.rgba(1, 1, 1, 0.14)
+                                             : S.AppTheme.surfaceVariant
+                            foregroundColor: HomeController.hasSuggestion
+                                             ? "white"
+                                             : S.AppTheme.textPrimary
+                            borderColor: "transparent"
+
+                            onClicked: _filterDrawer.open()
+
+                            Rectangle {
+                                objectName: "filtersHeaderBadge"
+
+                                visible: root.activeFilterCount > 0
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.rightMargin: -2
+                                anchors.topMargin: -2
+                                width: 18
+                                height: 18
+                                radius: 9
+                                color: S.AppTheme.error
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.activeFilterCount
+                                    color: "white"
+                                    font.pixelSize: S.AppTheme.fs10
+                                    font.weight: Font.Bold
+                                }
                             }
                         }
                     }
+                }
+            }
 
-                    AppButton {
-                        objectName: "homeTutorialButton"
+            Flow {
+                id: _filterSummary
+                objectName: "homeFilterSummary"
 
-                        Layout.alignment: Qt.AlignRight
-                        visible: AppSettings.appLaunchCount <= 2
-                        text: qsTr("Tips")
-                        accessibleName: qsTr("How Reroll works")
-                        contentRadius: S.AppTheme.radiusPill
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: _heroHeader.bottom
+                anchors.leftMargin: S.AppTheme.spacing18
+                anchors.rightMargin: S.AppTheme.spacing18
+                anchors.topMargin: S.AppTheme.spacing10
+                spacing: S.AppTheme.spacing6
+                visible: root.filterSummary.length > 0
+                opacity: _filterSummaryArea.pressed ? 0.6 : 1.0
+
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Active filters: %1").arg(root.filterSummary.join(", "))
+
+                Repeater {
+                    model: root.filterSummary
+
+                    delegate: GenreTag {
+                        required property string modelData
+
+                        text: modelData
                         backgroundColor: HomeController.hasSuggestion
-                                         ? Qt.rgba(1, 1, 1, 0.1)
+                                         ? Qt.rgba(0, 0, 0, 0.35)
                                          : S.AppTheme.surfaceVariant
                         foregroundColor: HomeController.hasSuggestion
-                                         ? Qt.rgba(1, 1, 1, 0.85)
+                                         ? "white"
                                          : S.AppTheme.textSecondary
-                        borderColor: "transparent"
-
-                        onClicked: _tutorialSheet.open()
+                        borderColor: HomeController.hasSuggestion
+                                     ? Qt.rgba(1, 1, 1, 0.2)
+                                     : S.AppTheme.outline
                     }
                 }
+            }
+
+            MouseArea {
+                id: _filterSummaryArea
+                objectName: "homeFilterSummaryArea"
+
+                x: _filterSummary.x
+                y: _filterSummary.y
+                width: _filterSummary.childrenRect.width
+                height: _filterSummary.childrenRect.height
+                visible: _filterSummary.visible
+                cursorShape: Qt.PointingHandCursor
+
+                onClicked: _filterDrawer.open()
             }
 
             SuggestionCard {
@@ -250,6 +461,7 @@ Item {
                        ? Math.min(parent.width - 2 * S.AppTheme.spacing32, 960)
                        : parent.width
                 visible: root.cardVisible
+                opacity: 1 - root.dragFade
                 wideLayout: root.wideLayout
                 recycled: HomeController.recycled
                 tmdbId: HomeController.currentTmdbId
@@ -260,6 +472,10 @@ Item {
                 overview: HomeController.overview
                 genreNames: HomeController.currentGenreNames
                 streamingProviders: HomeController.currentStreamingProviders
+
+                transform: Translate {
+                    x: root.dragOffsetX * 0.5
+                }
             }
 
             StatePanel {
@@ -275,8 +491,23 @@ Item {
                              : defaultMessageText
                 retryVisible: mode === StatePanel.NetworkError
                               || mode === StatePanel.RateLimited
+                              || mode === StatePanel.Empty
+                retryText: mode === StatePanel.Empty ? qsTr("Edit filters") : qsTr("Try again")
+                secondaryVisible: mode === StatePanel.Empty
+                                  && !HomeController.appliedFiltersAreDefault
+                secondaryText: qsTr("Reset filters")
 
-                onRetryRequested: HomeController.retry()
+                onRetryRequested: {
+                    if (mode === StatePanel.Empty)
+                        _filterDrawer.open()
+                    else
+                        HomeController.retry()
+                }
+
+                onSecondaryRequested: {
+                    if (HomeController.resetAndApply())
+                        _toast.show(qsTr("Filters reset"))
+                }
             }
         }
 
@@ -339,21 +570,7 @@ Item {
 
             onTrailerRequested: HomeController.playTrailer()
             onRerollRequested: HomeController.reroll()
-
-            onHideRequested: {
-                MyListController.setHidden(
-                    HomeController.currentTmdbId,
-                    HomeController.isTv ? 1 : 0,
-                    HomeController.title,
-                    HomeController.releaseYear,
-                    HomeController.currentGenreIds,
-                    HomeController.currentPosterPath,
-                    HomeController.rating,
-                    HomeController.voteCount,
-                    true)
-                _toast.show(qsTr("Won't show this title again"))
-                HomeController.reroll()
-            }
+            onHideRequested: root.hideCurrent()
         }
     }
 

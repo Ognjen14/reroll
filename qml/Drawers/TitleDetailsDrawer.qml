@@ -16,6 +16,18 @@ Basic.Drawer {
     property int releaseYear: 0
     property string posterPath
     property double rating: 0.0
+    property var genreIds: []
+    property var voteCount: 0
+
+    readonly property bool inWatchlist: {
+        MyListController.revision
+        return root.tmdbId > 0 && MyListController.isInWatchlist(root.tmdbId, root.mediaType)
+    }
+    readonly property bool isWatched: {
+        MyListController.revision
+        return root.tmdbId > 0 && MyListController.isMarkedWatched(root.tmdbId, root.mediaType)
+    }
+    readonly property color activeForeground: AppTheme.darkMode ? AppTheme.onPrimary : "#FFFFFF"
 
     readonly property bool isTv: mediaType === 1
     readonly property string mediaTypeText: isTv ? qsTr("TV") : qsTr("Movie")
@@ -37,13 +49,15 @@ Basic.Drawer {
                  | Basic.Popup.CloseOnPressOutside
 
     function openFor(newTmdbId, newMediaType, newTitle, newReleaseYear,
-                      newPosterPath, newRating) {
+                      newPosterPath, newRating, newGenreIds, newVoteCount) {
         root.tmdbId = newTmdbId
         root.mediaType = newMediaType
         root.title = newTitle
         root.releaseYear = newReleaseYear
         root.posterPath = newPosterPath
         root.rating = newRating
+        root.genreIds = newGenreIds !== undefined && newGenreIds !== null ? newGenreIds : []
+        root.voteCount = newVoteCount !== undefined && newVoteCount !== null ? newVoteCount : 0
         DiscoverController.loadTitleDetails(newTmdbId, newMediaType)
         root.open()
     }
@@ -201,6 +215,66 @@ Basic.Drawer {
                                 }
                             }
                         }
+                    }
+                }
+
+                Row {
+                    objectName: "titleDetailsListActions"
+
+                    x: parent.horizontalInset
+                    width: parent.width - 2 * parent.horizontalInset
+                    spacing: AppTheme.spacing8
+
+                    AppButton {
+                        objectName: "titleDetailsWatchlistButton"
+
+                        width: (parent.width - parent.spacing) / 2
+                        height: AppTheme.controlHeightMedium
+                        text: root.inWatchlist ? qsTr("On watchlist") : qsTr("Watchlist")
+                        accessibleName: root.inWatchlist
+                                        ? qsTr("Remove from watchlist")
+                                        : qsTr("Add to watchlist")
+                        imageSource: root.inWatchlist
+                                     ? "qrc:/assets/reroll_page/whichlisted.png"
+                                     : "qrc:/assets/reroll_page/whichlist.png"
+                        imageSize: 18
+                        contentRadius: AppTheme.radiusPill
+                        backgroundColor: root.inWatchlist ? AppTheme.primary : AppTheme.surfaceVariant
+                        foregroundColor: root.inWatchlist ? root.activeForeground : AppTheme.textPrimary
+                        borderColor: root.inWatchlist ? "transparent" : AppTheme.outline
+
+                        Accessible.checked: root.inWatchlist
+
+                        onClicked: MyListController.setWatchlist(
+                            root.tmdbId, root.mediaType, root.title, root.releaseYear,
+                            root.genreIds, root.posterPath, root.rating, root.voteCount,
+                            !root.inWatchlist)
+                    }
+
+                    AppButton {
+                        objectName: "titleDetailsWatchedButton"
+
+                        width: (parent.width - parent.spacing) / 2
+                        height: AppTheme.controlHeightMedium
+                        text: root.isWatched ? qsTr("Watched") : qsTr("Mark watched")
+                        accessibleName: root.isWatched
+                                        ? qsTr("Unmark as watched")
+                                        : qsTr("Mark as watched")
+                        imageSource: root.isWatched
+                                     ? "qrc:/assets/reroll_page/marked_watched.png"
+                                     : "qrc:/assets/reroll_page/mark_watched.png"
+                        imageSize: 18
+                        contentRadius: AppTheme.radiusPill
+                        backgroundColor: root.isWatched ? AppTheme.primary : AppTheme.surfaceVariant
+                        foregroundColor: root.isWatched ? root.activeForeground : AppTheme.textPrimary
+                        borderColor: root.isWatched ? "transparent" : AppTheme.outline
+
+                        Accessible.checked: root.isWatched
+
+                        onClicked: MyListController.setWatched(
+                            root.tmdbId, root.mediaType, root.title, root.releaseYear,
+                            root.genreIds, root.posterPath, root.rating, root.voteCount,
+                            !root.isWatched)
                     }
                 }
 

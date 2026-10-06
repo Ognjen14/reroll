@@ -44,6 +44,9 @@ Rectangle {
     property bool retryVisible: false
     property bool retryEnabled: true
     property string retryText: qsTr("Try again")
+    property bool secondaryVisible: false
+    property string secondaryText
+    property url iconOverride: ""
 
     readonly property bool loading: mode === StatePanel.Loading
     readonly property color accentColor: {
@@ -53,7 +56,7 @@ Rectangle {
         case StatePanel.RateLimited:
             return AppTheme.warning
         default:
-            return AppTheme.info
+            return AppTheme.primary
         }
     }
     readonly property color panelColor: {
@@ -67,6 +70,8 @@ Rectangle {
         }
     }
     readonly property url iconSource: {
+        if (iconOverride.toString().length > 0)
+            return iconOverride
         switch (mode) {
         case StatePanel.Empty:
             return "qrc:/assets/nav/discover.svg"
@@ -79,6 +84,7 @@ Rectangle {
     }
 
     signal retryRequested()
+    signal secondaryRequested()
 
     implicitWidth: 360
     implicitHeight: _content.implicitHeight + 48
@@ -168,9 +174,27 @@ Rectangle {
             accessibleName: root.retryText
             contentRadius: AppTheme.radiusPill
             backgroundColor: root.accentColor
-            foregroundColor: "#FFFFFF"
+            foregroundColor: root.mode === StatePanel.Empty || root.mode === StatePanel.Loading
+                             ? (AppTheme.darkMode ? AppTheme.onPrimary : "#FFFFFF")
+                             : "#FFFFFF"
 
             onClicked: root.retryRequested()
+        }
+
+        AppButton {
+            objectName: "stateSecondaryButton"
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            height: visible ? implicitHeight : 0
+            visible: root.secondaryVisible && !root.loading
+            text: root.secondaryText
+            accessibleName: root.secondaryText
+            contentRadius: AppTheme.radiusPill
+            backgroundColor: "transparent"
+            foregroundColor: AppTheme.textPrimary
+            borderColor: AppTheme.outline
+
+            onClicked: root.secondaryRequested()
         }
     }
 }

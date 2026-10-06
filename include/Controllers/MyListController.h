@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariant>
+#include <QVariantMap>
 
 namespace Reroll::Infrastructure
 {
@@ -42,6 +43,9 @@ public:
     Q_INVOKABLE bool isInWatchlist(qlonglong tmdbId, int mediaType) const;
     Q_INVOKABLE bool isMarkedWatched(qlonglong tmdbId, int mediaType) const;
     Q_INVOKABLE int totalCount() const noexcept;
+    Q_INVOKABLE int countForMode(int mode) const;
+    Q_INVOKABLE QVariantMap captureState(qlonglong tmdbId, int mediaType) const;
+    Q_INVOKABLE void restoreState(const QVariantMap &state);
 
     Q_INVOKABLE void setWatchlist(qlonglong tmdbId,
                                   int mediaType,

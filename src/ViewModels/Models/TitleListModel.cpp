@@ -143,6 +143,26 @@ void TitleListModel::upsertEntry(Domain::MyListEntry entry)
     endInsertRows();
 }
 
+void TitleListModel::insertEntryAt(int row, Domain::MyListEntry entry)
+{
+    const auto existing = std::find_if(
+        m_entries.cbegin(),
+        m_entries.cend(),
+        [&entry](const Domain::MyListEntry &item) {
+            return item.snapshot().identity() == entry.snapshot().identity();
+        });
+    if (existing != m_entries.cend())
+    {
+        upsertEntry(std::move(entry));
+        return;
+    }
+
+    const int clampedRow = std::clamp(row, 0, static_cast<int>(m_entries.size()));
+    beginInsertRows(QModelIndex(), clampedRow, clampedRow);
+    m_entries.insert(m_entries.begin() + clampedRow, std::move(entry));
+    endInsertRows();
+}
+
 bool TitleListModel::removeEntry(const Domain::CandidateIdentity &identity)
 {
     const auto existing = std::find_if(

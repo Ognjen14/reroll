@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../Controls" as Ctrl
 import "../Singletons" as S
+import "../Drawers" as D
 import com.topicdev.reroll 1.0
 Item{
     id: root
@@ -35,6 +36,48 @@ Item{
             }
             Ctrl.FontSizePicker{
                 width: parent.width
+            }
+
+            Rectangle {
+                x: 16
+                width: parent.width - 32
+                height: 1
+                color: S.AppTheme.outline
+            }
+
+            Column {
+                x: 16
+                width: parent.width - 32
+                spacing: S.AppTheme.spacing4
+
+                Text {
+                    text: qsTr("HELP")
+                    color: S.AppTheme.textSecondary
+                    font.pixelSize: S.AppTheme.fs12
+                    font.weight: Font.Black
+                    font.letterSpacing: 1
+                }
+
+                Ctrl.SettingsLinkRow {
+                    objectName: "settingsHowRerollWorksRow"
+                    width: parent.width
+                    text: qsTr("How Reroll works")
+                    onClicked: _rerollTips.open()
+                }
+
+                Ctrl.SettingsLinkRow {
+                    objectName: "settingsHowDiscoverWorksRow"
+                    width: parent.width
+                    text: qsTr("How Discover works")
+                    onClicked: _discoverTips.open()
+                }
+
+                Ctrl.SettingsLinkRow {
+                    objectName: "settingsHowMyListWorksRow"
+                    width: parent.width
+                    text: qsTr("How My List works")
+                    onClicked: _myListTips.open()
+                }
             }
 
             Rectangle {
@@ -119,14 +162,14 @@ Item{
                     objectName: "settingsTermsOfUseRow"
                     width: parent.width
                     text: qsTr("Terms of Use")
-                    url: "https://makimedia.org/reroll/terms.html"
+                    url: "https://topicdev.com/reroll/terms.html"
                 }
 
                 Ctrl.SettingsLinkRow {
                     objectName: "settingsPrivacyPolicyRow"
                     width: parent.width
                     text: qsTr("Privacy Policy")
-                    url: "https://makimedia.org/reroll/privacy.html"
+                    url: "https://topicdev.com/reroll/privacy.html"
                 }
             }
 
@@ -167,5 +210,76 @@ Item{
                 font.weight: Font.Medium
             }
         }
+    }
+
+    D.TutorialSheet {
+        id: _rerollTips
+        objectName: "settingsRerollTutorialSheet"
+
+        heading: qsTr("How Reroll Works")
+        sections: [
+            {
+                heading: qsTr("Reroll"),
+                body: qsTr("Tap the big Reroll button to get a new suggestion. Don't like it? Reroll again.")
+            },
+            {
+                heading: qsTr("Swipe"),
+                body: qsTr("Swipe left to reroll, swipe right to go back to the previous suggestion, and tap or swipe up for details.")
+            },
+            {
+                heading: qsTr("Filters"),
+                body: qsTr("Tap Filters to narrow results by media type, genre, year, and rating.")
+            },
+            {
+                heading: qsTr("Watchlist & watched"),
+                body: qsTr("Save a title for later or mark it watched right from the action bar. The X hides a title for good.")
+            }
+        ]
+    }
+
+    D.TutorialSheet {
+        id: _discoverTips
+        objectName: "settingsDiscoverTutorialSheet"
+
+        heading: qsTr("How Discover Works")
+        sections: [
+            {
+                heading: qsTr("Search"),
+                body: qsTr("Search for a specific movie or TV show by title.")
+            },
+            {
+                heading: qsTr("Browse"),
+                body: qsTr("Scroll down to browse trending, popular, and titles by genre.")
+            },
+            {
+                heading: qsTr("Quick actions"),
+                body: qsTr("Tap the bookmark or checkmark badge on any poster to save it to your watchlist or mark it watched. Tap the poster itself for more details.")
+            }
+        ]
+    }
+
+    D.TutorialSheet {
+        id: _myListTips
+        objectName: "settingsMyListTutorialSheet"
+
+        heading: qsTr("How My List Works")
+        sections: [
+            {
+                heading: qsTr("Details"),
+                body: qsTr("Tap a title to see its details, where you can also add it to your watchlist or mark it watched.")
+            },
+            {
+                heading: qsTr("More options"),
+                body: qsTr("Long-press a title to move it between watchlist and watched, or remove it from your list.")
+            },
+            {
+                heading: qsTr("Undo"),
+                body: qsTr("Changed something by accident? Tap Undo on the message at the bottom of the screen.")
+            },
+            {
+                heading: qsTr("Hidden titles"),
+                body: qsTr("Titles you hide on Reroll live in the Hidden tab. Tap Restore to bring one back into suggestions.")
+            }
+        ]
     }
 }

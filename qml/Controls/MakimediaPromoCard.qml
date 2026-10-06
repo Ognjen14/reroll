@@ -101,7 +101,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Found something to watch? Play your own films and shows on your PC, phone, tablet and TV.")
+                text: qsTr("Have your own film collection? Makimedia turns it into a library on your PC, phone, tablet and TV.")
                 color: AppTheme.textSecondary
                 font.pixelSize: AppTheme.fs13
                 wrapMode: Text.Wrap

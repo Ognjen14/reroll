@@ -13,6 +13,8 @@ class AppSettings : public QObject
     Q_PROPERTY(double fontSizeScale READ fontSizeScale WRITE setFontSizeScale NOTIFY fontSizeScaleChanged FINAL)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT FINAL)
     Q_PROPERTY(int appLaunchCount READ appLaunchCount CONSTANT FINAL)
+    Q_PROPERTY(int myListSortMode READ myListSortMode WRITE setMyListSortMode
+                   NOTIFY myListSortModeChanged FINAL)
 
 
 public:
@@ -29,6 +31,9 @@ public:
 
     double fontSizeScale() const;
     void setFontSizeScale(double scale);
+
+    int myListSortMode() const;
+    void setMyListSortMode(int mode);
 
     QString appVersion() const;
     int appLaunchCount() const;
@@ -47,6 +52,8 @@ signals:
     void accentIndexChanged();
 
     void fontSizeScaleChanged();
+
+    void myListSortModeChanged();
 
 private:
     QSettings m_settings;

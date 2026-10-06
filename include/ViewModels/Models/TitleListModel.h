@@ -47,6 +47,7 @@ public:
     void setEntries(Entries entries);
     void appendEntries(Entries entries);
     void upsertEntry(Domain::MyListEntry entry);
+    void insertEntryAt(int row, Domain::MyListEntry entry);
     bool removeEntry(const Domain::CandidateIdentity &identity);
     void clear();
 

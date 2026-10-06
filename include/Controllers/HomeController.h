@@ -15,6 +15,7 @@
 #include "ViewModels/Models/GenreListModel.h"
 
 #include <QObject>
+#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <QVariant>
@@ -58,6 +59,7 @@ class HomeController final : public QObject
 
     Q_PROPERTY(int rerollCount READ rerollCount NOTIFY sessionChanged FINAL)
     Q_PROPERTY(bool recycled READ recycled NOTIFY sessionChanged FINAL)
+    Q_PROPERTY(bool canGoBack READ canGoBack NOTIFY sessionChanged FINAL)
 
     Q_PROPERTY(bool hasUnappliedChanges READ hasUnappliedChanges
                    NOTIFY hasUnappliedChangesChanged FINAL)
@@ -89,6 +91,16 @@ class HomeController final : public QObject
                    NOTIFY filtersChanged FINAL)
     Q_PROPERTY(bool appliedExcludeWatched READ appliedExcludeWatched
                    NOTIFY filtersChanged FINAL)
+    Q_PROPERTY(QStringList appliedGenreNames READ appliedGenreNames
+                   NOTIFY appliedGenreNamesChanged FINAL)
+    Q_PROPERTY(bool appliedFiltersAreDefault READ appliedFiltersAreDefault
+                   NOTIFY filtersChanged FINAL)
+    Q_PROPERTY(qint64 editableMatchCount READ editableMatchCount
+                   NOTIFY matchCountChanged FINAL)
+    Q_PROPERTY(bool editableHasNoMatches READ editableHasNoMatches
+                   NOTIFY matchCountChanged FINAL)
+    Q_PROPERTY(bool matchCountLoading READ matchCountLoading
+                   NOTIFY matchCountChanged FINAL)
 
 public:
     enum class State
@@ -133,6 +145,7 @@ public:
 
     [[nodiscard]] int rerollCount() const noexcept;
     [[nodiscard]] bool recycled() const noexcept;
+    [[nodiscard]] bool canGoBack() const noexcept;
 
     [[nodiscard]] bool hasUnappliedChanges() const noexcept;
     [[nodiscard]] ViewModels::Models::GenreListModel *genreModel() noexcept;
@@ -150,10 +163,19 @@ public:
     [[nodiscard]] double appliedMinimumRating() const noexcept;
     [[nodiscard]] int appliedGenreCount() const noexcept;
     [[nodiscard]] bool appliedExcludeWatched() const noexcept;
+    [[nodiscard]] QStringList appliedGenreNames() const;
+    [[nodiscard]] bool appliedFiltersAreDefault() const;
+    [[nodiscard]] qint64 editableMatchCount() const noexcept;
+    [[nodiscard]] bool editableHasNoMatches() const noexcept;
+    [[nodiscard]] bool matchCountLoading() const noexcept;
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void reroll();
     Q_INVOKABLE void retry();
+    Q_INVOKABLE bool previous();
+    Q_INVOKABLE bool resetAndApply();
+    Q_INVOKABLE void refreshMatchCount();
+    Q_INVOKABLE void ensureGenreLists();
 
     Q_INVOKABLE bool setEditableMediaType(int mediaType);
     Q_INVOKABLE bool setEditableYearRange(int minimumYear, int maximumYear);
@@ -176,6 +198,9 @@ signals:
     void editableFiltersChanged();
     void hasUnappliedChangesChanged();
     void recyclingStarted();
+    void appliedGenreNamesChanged();
+    void matchCountChanged();
+    void moreTitlesFailed();
 
 private:
     struct PickOutcome final
@@ -203,6 +228,7 @@ private:
     void finishInitialLoadIfReady(std::uint64_t generation);
     void resolvePickResult(PickResult result);
     [[nodiscard]] PickResult pickAndSelect(bool isReroll);
+    [[nodiscard]] bool advanceForward();
     [[nodiscard]] PickOutcome pickEligibleCandidate();
     [[nodiscard]] bool isEligible(const Domain::Candidate &candidate) const;
     [[nodiscard]] bool canRequestMorePages() const noexcept;
@@ -218,7 +244,15 @@ private:
         quint32 page);
     void persistFilters();
     void fetchStreamingProviders();
+    void fetchMatchCount();
+    [[nodiscard]] qint64 countLocallyExcludedMatches(
+        const Domain::FilterCriteria &filters) const;
+    void handleMatchCountResult(std::uint64_t generation,
+                                Domain::MediaType mediaType,
+                                Infrastructure::TmdbClient::DiscoverResult result);
     void fetchGenreLists();
+    void fetchMovieGenres();
+    void fetchTvGenres();
     void refreshGenreModel();
     [[nodiscard]] QStringList genreNamesFor(
         Domain::MediaType mediaType,
@@ -240,6 +274,10 @@ private:
     ViewModels::Models::GenreListModel m_genreModel;
     ViewModels::Models::GenreListModel::Entries m_movieGenreEntries;
     ViewModels::Models::GenreListModel::Entries m_tvGenreEntries;
+    bool m_movieGenresPending{false};
+    bool m_tvGenresPending{false};
+    int m_movieGenreAttempts{0};
+    int m_tvGenreAttempts{0};
 
     State m_state{State::Idle};
     QString m_errorText;
@@ -256,6 +294,14 @@ private:
     bool m_lastPickWasReroll{false};
     bool m_recycled{false};
     bool m_trailerLoading{false};
+
+    QTimer m_matchCountTimer;
+    std::uint64_t m_matchCountGeneration{0};
+    int m_matchCountPendingRequests{0};
+    qint64 m_matchCountAccumulator{0};
+    bool m_matchCountFailed{false};
+    qint64 m_editableMatchCount{-1};
+    bool m_matchCountLoading{false};
 
     QVariantList m_currentStreamingProviders;
     qint64 m_streamingProvidersTmdbId{0};

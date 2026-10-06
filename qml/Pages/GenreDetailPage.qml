@@ -118,7 +118,7 @@ Item {
                                 : qsTr("Removed from watched"))
                 }
                 onDetailsRequested: _titleDetailsDrawer.openFor(
-                    tmdbId, mediaType, title, releaseYear, posterPath, rating)
+                    tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
             }
 
             footer: Item {

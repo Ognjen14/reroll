@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(reroll VERSION 1.2.0 LANGUAGES CXX)
+project(reroll VERSION 1.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -146,6 +146,7 @@ qt_add_qml_module(appReroll
         qml/Controls/MediaTypeSelector.qml
         qml/Controls/PosterImage.qml
         qml/Controls/PosterPlaceholder.qml
+        qml/Controls/PosterRowSection.qml
         qml/Controls/RangeSliderInput.qml
         qml/Controls/RerollButton.qml
         qml/Controls/SegmentedOption.qml
@@ -161,6 +162,7 @@ qt_add_qml_module(appReroll
         qml/Controls/UnappliedChangesNotice.qml
 
         #Drawers
+        qml/Drawers/ActionSheet.qml
         qml/Drawers/FilterDrawer.qml
         qml/Drawers/TitleDetailsDrawer.qml
         qml/Drawers/TutorialSheet.qml

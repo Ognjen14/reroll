@@ -10,6 +10,7 @@
 
 #include <QDesktopServices>
 #include <QRandomGenerator>
+#include <QTimer>
 #include <QUrl>
 
 #include <algorithm>
@@ -24,6 +25,11 @@ namespace
 constexpr quint32 RandomStartPageMaximum = 20;
 constexpr Domain::CandidatePool::SizeType ReplenishmentThreshold = 5;
 constexpr std::int64_t MinimumEligibleVoteCount = 20;
+constexpr int MatchCountDebounceIntervalMs = 400;
+constexpr quint32 TmdbMaximumPage = 500;
+constexpr qint64 TmdbMaximumReachableResults = TmdbMaximumPage * 20;
+constexpr int GenreListMaximumAutoAttempts = 4;
+constexpr int GenreListRetryBaseDelayMs = 2000;
 
 Infrastructure::TmdbGenreMatchMode toTmdbGenreMatchMode(Domain::GenreMatchMode mode)
 {
@@ -64,6 +70,15 @@ HomeController::HomeController(Infrastructure::TmdbClient &tmdbClient,
 
     connect(this, &HomeController::suggestionChanged,
             this, &HomeController::fetchStreamingProviders);
+    connect(this, &HomeController::filtersChanged,
+            this, &HomeController::appliedGenreNamesChanged);
+
+    m_matchCountTimer.setSingleShot(true);
+    m_matchCountTimer.setInterval(MatchCountDebounceIntervalMs);
+    connect(&m_matchCountTimer, &QTimer::timeout,
+            this, &HomeController::fetchMatchCount);
+    connect(this, &HomeController::editableFiltersChanged,
+            this, &HomeController::refreshMatchCount);
 
     fetchGenreLists();
 }
@@ -204,6 +219,11 @@ bool HomeController::recycled() const noexcept
     return m_recycled;
 }
 
+bool HomeController::canGoBack() const noexcept
+{
+    return m_session.canGoBack();
+}
+
 bool HomeController::hasUnappliedChanges() const noexcept
 {
     return m_editableFilters != m_appliedFilters;
@@ -274,6 +294,210 @@ bool HomeController::appliedExcludeWatched() const noexcept
     return m_appliedFilters.excludeWatched();
 }
 
+QStringList HomeController::appliedGenreNames() const
+{
+    const Domain::FilterCriteria::GenreIds &ids = m_appliedFilters.genreIds();
+    if (m_appliedFilters.mediaType() == Domain::MediaTypeFilter::Tv)
+    {
+        return genreNamesFor(Domain::MediaType::Tv, ids);
+    }
+
+    QStringList names = genreNamesFor(Domain::MediaType::Movie, ids);
+    if (names.size() < static_cast<qsizetype>(ids.size()))
+    {
+        for (const QString &name : genreNamesFor(Domain::MediaType::Tv, ids))
+        {
+            if (!names.contains(name))
+            {
+                names.push_back(name);
+            }
+        }
+    }
+    return names;
+}
+
+bool HomeController::appliedFiltersAreDefault() const
+{
+    return m_appliedFilters == Domain::FilterCriteria{};
+}
+
+qint64 HomeController::editableMatchCount() const noexcept
+{
+    return m_matchCountLoading ? -1 : m_editableMatchCount;
+}
+
+bool HomeController::editableHasNoMatches() const noexcept
+{
+    return !m_matchCountLoading && m_editableMatchCount == 0;
+}
+
+bool HomeController::matchCountLoading() const noexcept
+{
+    return m_matchCountLoading;
+}
+
+void HomeController::refreshMatchCount()
+{
+    ++m_matchCountGeneration;
+    if (!m_matchCountLoading)
+    {
+        m_matchCountLoading = true;
+        emit matchCountChanged();
+    }
+    m_matchCountTimer.start();
+}
+
+void HomeController::fetchMatchCount()
+{
+    ++m_matchCountGeneration;
+    const auto generation = m_matchCountGeneration;
+    const auto mediaTypeFilterValue = m_editableFilters.mediaType();
+    const bool includeMovies = mediaTypeFilterValue == Domain::MediaTypeFilter::Movie
+        || mediaTypeFilterValue == Domain::MediaTypeFilter::Both;
+    const bool includeTv = mediaTypeFilterValue == Domain::MediaTypeFilter::Tv
+        || mediaTypeFilterValue == Domain::MediaTypeFilter::Both;
+
+    m_matchCountPendingRequests = (includeMovies ? 1 : 0) + (includeTv ? 1 : 0);
+    m_matchCountAccumulator = 0;
+    m_matchCountFailed = false;
+
+    RR_LOG_D() << "Match count requested" << generation
+               << "movies" << includeMovies << "tv" << includeTv;
+
+    const Infrastructure::TmdbDiscoverRequestDto request = buildRequest(m_editableFilters, 1);
+    if (includeMovies)
+    {
+        static_cast<void>(m_tmdbClient.discoverMovie(
+            request,
+            [this, generation](Infrastructure::TmdbClient::DiscoverResult result) {
+                handleMatchCountResult(generation, Domain::MediaType::Movie, std::move(result));
+            }));
+    }
+    if (includeTv)
+    {
+        static_cast<void>(m_tmdbClient.discoverTv(
+            request,
+            [this, generation](Infrastructure::TmdbClient::DiscoverResult result) {
+                handleMatchCountResult(generation, Domain::MediaType::Tv, std::move(result));
+            }));
+    }
+}
+
+void HomeController::handleMatchCountResult(std::uint64_t generation,
+                                            Domain::MediaType mediaType,
+                                            Infrastructure::TmdbClient::DiscoverResult result)
+{
+    if (generation != m_matchCountGeneration)
+    {
+        RR_LOG_D() << "Match count result discarded, filters changed" << generation;
+        return;
+    }
+
+    if (auto *error = std::get_if<Infrastructure::TmdbError>(&result))
+    {
+        RR_LOG_W() << "Match count lookup failed"
+                   << (mediaType == Domain::MediaType::Movie ? "movie" : "tv")
+                   << "category" << static_cast<int>(error->category());
+        m_matchCountFailed = true;
+    }
+    else
+    {
+        const auto &page = std::get<Infrastructure::TmdbDiscoverPageDto>(result);
+        const qint64 reachable = std::min(static_cast<qint64>(page.totalResults),
+                                          TmdbMaximumReachableResults);
+        RR_LOG_D() << "Match count page"
+                   << (mediaType == Domain::MediaType::Movie ? "movie" : "tv")
+                   << "totalResults" << static_cast<qint64>(page.totalResults)
+                   << "reachable" << reachable;
+        m_matchCountAccumulator += reachable;
+    }
+
+    if (--m_matchCountPendingRequests > 0)
+    {
+        return;
+    }
+
+    if (m_matchCountFailed)
+    {
+        m_editableMatchCount = -1;
+    }
+    else
+    {
+        const qint64 excluded = countLocallyExcludedMatches(m_editableFilters);
+        m_editableMatchCount = std::max<qint64>(0, m_matchCountAccumulator - excluded);
+        RR_LOG_D() << "Match count local exclusions" << excluded
+                   << "from" << m_matchCountAccumulator;
+    }
+    m_matchCountLoading = false;
+    RR_LOG_I() << "Match count resolved" << m_editableMatchCount
+               << "failed" << m_matchCountFailed;
+    emit matchCountChanged();
+}
+
+qint64 HomeController::countLocallyExcludedMatches(
+    const Domain::FilterCriteria &filters) const
+{
+    const auto mediaTypeFilterValue = filters.mediaType();
+    const Domain::FilterCriteria::GenreIds &selectedGenres = filters.genreIds();
+    const bool matchAllGenres = filters.genreMatchMode() == Domain::GenreMatchMode::And;
+
+    qint64 excluded = 0;
+    for (const Domain::MyListEntry &entry : m_jsonStore.myList())
+    {
+        if (!entry.hidden() && !(filters.excludeWatched() && entry.watched()))
+        {
+            continue;
+        }
+
+        const Domain::TitleSnapshot &snapshot = entry.snapshot();
+        const bool isTv = snapshot.mediaType() == Domain::MediaType::Tv;
+        if ((isTv && mediaTypeFilterValue == Domain::MediaTypeFilter::Movie)
+            || (!isTv && mediaTypeFilterValue == Domain::MediaTypeFilter::Tv))
+        {
+            continue;
+        }
+
+        if (snapshot.voteCount() < MinimumEligibleVoteCount)
+        {
+            continue;
+        }
+
+        const int year = snapshot.releaseYear();
+        if (filters.minimumYear().has_value() && (year <= 0 || year < *filters.minimumYear()))
+        {
+            continue;
+        }
+        if (filters.maximumYear().has_value() && (year <= 0 || year > *filters.maximumYear()))
+        {
+            continue;
+        }
+
+        if (snapshot.rating() < filters.minimumRating())
+        {
+            continue;
+        }
+
+        if (!selectedGenres.empty())
+        {
+            const auto &titleGenres = snapshot.genreIds();
+            const auto hasGenre = [&titleGenres](Domain::FilterCriteria::GenreId genreId) {
+                return std::find(titleGenres.cbegin(), titleGenres.cend(), genreId)
+                    != titleGenres.cend();
+            };
+            const bool genresMatch = matchAllGenres
+                ? std::all_of(selectedGenres.cbegin(), selectedGenres.cend(), hasGenre)
+                : std::any_of(selectedGenres.cbegin(), selectedGenres.cend(), hasGenre);
+            if (!genresMatch)
+            {
+                continue;
+            }
+        }
+
+        ++excluded;
+    }
+    return excluded;
+}
+
 void HomeController::start()
 {
     if (m_state != State::Idle)
@@ -294,7 +518,83 @@ void HomeController::reroll()
     }
 
     RR_LOG_D() << "Reroll requested" << "currentRerollCount" << m_session.rerollCount();
+    if (advanceForward())
+    {
+        return;
+    }
     resolvePickResult(pickAndSelect(true));
+}
+
+bool HomeController::advanceForward()
+{
+    while (m_session.canGoForward())
+    {
+        const auto &forward = m_session.forwardHistory();
+        const Domain::Candidate &next = forward.back();
+        if (m_eligibilityFilter && !m_eligibilityFilter(next.identity()))
+        {
+            RR_LOG_D() << "Skipping ineligible forward history entry"
+                       << QString::fromStdString(next.title());
+            m_session.discardForwardEntry(forward.size() - 1);
+            continue;
+        }
+
+        if (!m_session.goForward())
+        {
+            return false;
+        }
+        RR_LOG_D() << "Reroll restored forward history entry" << title()
+                   << "backDepth" << m_session.backHistory().size()
+                   << "forwardDepth" << m_session.forwardHistory().size();
+        emit suggestionChanged();
+        emit sessionChanged();
+        return true;
+    }
+    return false;
+}
+
+bool HomeController::previous()
+{
+    if (m_state != State::Ready || m_awaitingReplenishmentForPick)
+    {
+        RR_LOG_W() << "Previous ignored, not in a ready state";
+        return false;
+    }
+
+    while (m_session.canGoBack())
+    {
+        const auto &back = m_session.backHistory();
+        const Domain::Candidate &previousCandidate = back.back();
+        if (m_eligibilityFilter && !m_eligibilityFilter(previousCandidate.identity()))
+        {
+            RR_LOG_D() << "Skipping ineligible back history entry"
+                       << QString::fromStdString(previousCandidate.title());
+            m_session.discardBackEntry(back.size() - 1);
+            continue;
+        }
+
+        if (!m_session.goBack())
+        {
+            break;
+        }
+        RR_LOG_I() << "Went back to previous suggestion" << title()
+                   << "backDepth" << m_session.backHistory().size()
+                   << "forwardDepth" << m_session.forwardHistory().size();
+        emit suggestionChanged();
+        emit sessionChanged();
+        return true;
+    }
+
+    RR_LOG_D() << "Previous ignored, no eligible history";
+    emit sessionChanged();
+    return false;
+}
+
+bool HomeController::resetAndApply()
+{
+    RR_LOG_I() << "Resetting filters to defaults and applying";
+    static_cast<void>(reset());
+    return apply();
 }
 
 void HomeController::retry()
@@ -707,6 +1007,7 @@ Infrastructure::TmdbDiscoverRequestDto HomeController::buildRequest(
     request.genreIds.assign(filters.genreIds().cbegin(), filters.genreIds().cend());
     request.genreMatchMode = toTmdbGenreMatchMode(filters.genreMatchMode());
     request.originalLanguage = filters.originalLanguage();
+    request.minimumVoteCount = MinimumEligibleVoteCount;
     request.sortByVoteCount = true;
     return request;
 }
@@ -772,6 +1073,13 @@ void HomeController::handlePageResult(std::uint64_t generation,
             --m_pendingInitialFetches;
             finishInitialLoadIfReady(generation);
         }
+        else if (m_awaitingReplenishmentForPick)
+        {
+            RR_LOG_W() << "Reroll could not load more titles, releasing the reroll button";
+            m_awaitingReplenishmentForPick = false;
+            emit stateChanged();
+            emit moreTitlesFailed();
+        }
         return;
     }
 
@@ -814,7 +1122,9 @@ void HomeController::handlePageResult(std::uint64_t generation,
 
     Domain::CandidatePool &pool = poolFor(mediaType);
     const auto insertedCount = pool.insertAll(std::move(candidates));
-    static_cast<void>(pool.recordFetchedPage(page_.page, page_.totalPages));
+    const auto reachableTotalPages = std::min<decltype(page_.totalPages)>(
+        page_.totalPages, TmdbMaximumPage);
+    static_cast<void>(pool.recordFetchedPage(page_.page, reachableTotalPages));
 
     RR_LOG_I() << "Discover page loaded" << (mediaType == Domain::MediaType::Movie ? "movie" : "tv")
                << page_.page << "of" << page_.totalPages
@@ -973,14 +1283,15 @@ HomeController::PickResult HomeController::pickAndSelect(bool isReroll)
         return PickResult::Pending;
     }
 
-    const auto poolMeetsVoteFloor = [](const Domain::CandidatePool &pool, bool active) {
+    const auto poolMeetsVoteFloor = [this](const Domain::CandidatePool &pool, bool active) {
         if (!active)
         {
             return false;
         }
         for (const Domain::Candidate &candidate : pool.candidates())
         {
-            if (candidate.voteCount() >= MinimumEligibleVoteCount)
+            if (candidate.voteCount() >= MinimumEligibleVoteCount
+                && (!m_eligibilityFilter || m_eligibilityFilter(candidate.identity())))
             {
                 return true;
             }
@@ -992,13 +1303,14 @@ HomeController::PickResult HomeController::pickAndSelect(bool isReroll)
     if (poolHasAnything)
     {
         RR_LOG_I() << "All matching titles have been shown, recycling the pool";
-        m_session.reset();
+        m_session.restartCycle();
         m_recycled = true;
         emit recyclingStarted();
         emit sessionChanged();
         return pickAndSelect(isReroll);
     }
 
+    RR_LOG_I() << "No eligible titles left, every match is hidden or watched";
     return PickResult::Empty;
 }
 
@@ -1066,6 +1378,7 @@ bool HomeController::isTransitionAllowed(State current, State next) noexcept
             || next == State::NetworkError
             || next == State::RateLimited;
     case State::Ready:
+        return next == State::Loading || next == State::Empty;
     case State::Empty:
     case State::NetworkError:
     case State::RateLimited:
@@ -1094,16 +1407,61 @@ bool HomeController::transitionTo(State next) noexcept
     return true;
 }
 
+void HomeController::ensureGenreLists()
+{
+    if (m_movieGenreEntries.empty() && !m_movieGenresPending)
+    {
+        RR_LOG_I() << "Movie genre list missing, requesting again";
+        m_movieGenreAttempts = 0;
+        fetchMovieGenres();
+    }
+    if (m_tvGenreEntries.empty() && !m_tvGenresPending)
+    {
+        RR_LOG_I() << "TV genre list missing, requesting again";
+        m_tvGenreAttempts = 0;
+        fetchTvGenres();
+    }
+}
+
 void HomeController::fetchGenreLists()
 {
-    m_tmdbClient.movieGenres(
+    fetchMovieGenres();
+    fetchTvGenres();
+}
+
+void HomeController::fetchMovieGenres()
+{
+    if (m_movieGenresPending)
+    {
+        return;
+    }
+    m_movieGenresPending = true;
+    ++m_movieGenreAttempts;
+
+    static_cast<void>(m_tmdbClient.movieGenres(
         std::nullopt,
         [this](Infrastructure::TmdbClient::GenreListResult result) {
+            m_movieGenresPending = false;
             auto *genres = std::get_if<Infrastructure::TmdbGenreListResponseDto>(&result);
             if (!genres)
             {
-                RR_LOG_W() << "Movie genre list failed to load";
+                if (m_movieGenreAttempts < GenreListMaximumAutoAttempts)
+                {
+                    const int delayMs = GenreListRetryBaseDelayMs * m_movieGenreAttempts;
+                    RR_LOG_W() << "Movie genre list failed to load, retrying"
+                               << "attempt" << m_movieGenreAttempts << "delayMs" << delayMs;
+                    QTimer::singleShot(delayMs, this, &HomeController::fetchMovieGenres);
+                }
+                else
+                {
+                    RR_LOG_W() << "Movie genre list failed to load, giving up until filters open"
+                               << "attempts" << m_movieGenreAttempts;
+                }
                 return;
+            }
+            if (genres->genres.empty())
+            {
+                RR_LOG_W() << "Movie genre list came back empty";
             }
             m_movieGenreEntries.clear();
             m_movieGenreEntries.reserve(genres->genres.size());
@@ -1112,18 +1470,47 @@ void HomeController::fetchGenreLists()
                 m_movieGenreEntries.push_back(
                     {genre.id, QString::fromStdString(genre.name), false});
             }
-            RR_LOG_I() << "Movie genre list loaded" << m_movieGenreEntries.size();
+            RR_LOG_I() << "Movie genre list loaded" << m_movieGenreEntries.size()
+                       << "attempt" << m_movieGenreAttempts;
             refreshGenreModel();
-        });
+            emit appliedGenreNamesChanged();
+            emit suggestionChanged();
+        }));
+}
 
-    m_tmdbClient.tvGenres(
+void HomeController::fetchTvGenres()
+{
+    if (m_tvGenresPending)
+    {
+        return;
+    }
+    m_tvGenresPending = true;
+    ++m_tvGenreAttempts;
+
+    static_cast<void>(m_tmdbClient.tvGenres(
         std::nullopt,
         [this](Infrastructure::TmdbClient::GenreListResult result) {
+            m_tvGenresPending = false;
             auto *genres = std::get_if<Infrastructure::TmdbGenreListResponseDto>(&result);
             if (!genres)
             {
-                RR_LOG_W() << "TV genre list failed to load";
+                if (m_tvGenreAttempts < GenreListMaximumAutoAttempts)
+                {
+                    const int delayMs = GenreListRetryBaseDelayMs * m_tvGenreAttempts;
+                    RR_LOG_W() << "TV genre list failed to load, retrying"
+                               << "attempt" << m_tvGenreAttempts << "delayMs" << delayMs;
+                    QTimer::singleShot(delayMs, this, &HomeController::fetchTvGenres);
+                }
+                else
+                {
+                    RR_LOG_W() << "TV genre list failed to load, giving up until filters open"
+                               << "attempts" << m_tvGenreAttempts;
+                }
                 return;
+            }
+            if (genres->genres.empty())
+            {
+                RR_LOG_W() << "TV genre list came back empty";
             }
             m_tvGenreEntries.clear();
             m_tvGenreEntries.reserve(genres->genres.size());
@@ -1132,9 +1519,12 @@ void HomeController::fetchGenreLists()
                 m_tvGenreEntries.push_back(
                     {genre.id, QString::fromStdString(genre.name), false});
             }
-            RR_LOG_I() << "TV genre list loaded" << m_tvGenreEntries.size();
+            RR_LOG_I() << "TV genre list loaded" << m_tvGenreEntries.size()
+                       << "attempt" << m_tvGenreAttempts;
             refreshGenreModel();
-        });
+            emit appliedGenreNamesChanged();
+            emit suggestionChanged();
+        }));
 }
 
 void HomeController::refreshGenreModel()

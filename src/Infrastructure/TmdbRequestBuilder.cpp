@@ -143,6 +143,11 @@ QNetworkRequest TmdbRequestBuilder::build(
         query.addQueryItem(QStringLiteral("with_original_language"),
                            QString::fromStdString(*request.originalLanguage));
     }
+    if (request.minimumVoteCount.has_value() && *request.minimumVoteCount > 0)
+    {
+        query.addQueryItem(QStringLiteral("vote_count.gte"),
+                           QString::number(*request.minimumVoteCount));
+    }
     if (request.sortByVoteCount)
     {
         query.addQueryItem(QStringLiteral("sort_by"), QStringLiteral("vote_count.desc"));

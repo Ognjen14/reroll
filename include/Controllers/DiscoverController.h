@@ -104,6 +104,9 @@ public:
     Q_INVOKABLE void start();
     Q_INVOKABLE void retryInitialLoad();
     Q_INVOKABLE void loadMoreTrendingMovies();
+    Q_INVOKABLE void loadMoreTrendingTv();
+    Q_INVOKABLE void loadMorePopularMovies();
+    Q_INVOKABLE void loadMorePopularTv();
     Q_INVOKABLE void loadMoreForGenre(int genreId);
     Q_INVOKABLE void loadMoreForTvGenre(int genreId);
     Q_INVOKABLE void loadMoreSearchResults();
@@ -170,6 +173,9 @@ private:
     ViewModels::Models::GenreSectionListModel m_tvGenreSections;
 
     PaginationState m_trendingMoviesPagination;
+    PaginationState m_trendingTvPagination;
+    PaginationState m_popularMoviesPagination;
+    PaginationState m_popularTvPagination;
     QHash<std::int32_t, PaginationState> m_genrePagination;
     QHash<std::int32_t, ViewModels::Models::TitleListModel *> m_genreTitleModels;
     QHash<std::int32_t, PaginationState> m_tvGenrePagination;

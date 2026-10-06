@@ -6,6 +6,7 @@
 #include "RRLog.h"
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 
 namespace Reroll::Controllers
@@ -107,6 +108,114 @@ int MyListController::totalCount() const noexcept
         [](const Domain::MyListEntry &entry) {
             return entry.watchlist() || entry.watched();
         }));
+}
+
+int MyListController::countForMode(int mode) const
+{
+    using Mode = ViewModels::Models::MyListFilterModel::Mode;
+    const auto &entries = m_model.entries();
+    return static_cast<int>(std::count_if(
+        entries.cbegin(),
+        entries.cend(),
+        [mode](const Domain::MyListEntry &entry) {
+            const bool listed = entry.watchlist() || entry.watched();
+            const bool isTv = entry.snapshot().mediaType() == Domain::MediaType::Tv;
+            switch (mode)
+            {
+            case Mode::Watchlist:
+                return entry.watchlist();
+            case Mode::Watched:
+                return entry.watched();
+            case Mode::Movie:
+                return listed && !isTv;
+            case Mode::Tv:
+                return listed && isTv;
+            case Mode::Hidden:
+                return entry.hidden();
+            case Mode::All:
+            default:
+                return listed;
+            }
+        }));
+}
+
+QVariantMap MyListController::captureState(qlonglong tmdbId, int mediaType) const
+{
+    const Domain::CandidateIdentity identity(
+        mediaType == 1 ? Domain::MediaType::Tv : Domain::MediaType::Movie, tmdbId);
+    const auto &entries = m_model.entries();
+    const auto existing = std::find_if(
+        entries.cbegin(),
+        entries.cend(),
+        [&identity](const Domain::MyListEntry &entry) {
+            return entry.snapshot().identity() == identity;
+        });
+
+    QVariantMap state;
+    state.insert(QStringLiteral("tmdbId"), tmdbId);
+    state.insert(QStringLiteral("mediaType"), mediaType);
+    state.insert(QStringLiteral("exists"), existing != entries.cend());
+    if (existing == entries.cend())
+    {
+        RR_LOG_D() << "MyList state captured for absent title" << tmdbId;
+        return state;
+    }
+
+    const Domain::TitleSnapshot &snapshot = existing->snapshot();
+    QVariantList genreIds;
+    for (const auto genreId : snapshot.genreIds())
+    {
+        genreIds.push_back(genreId);
+    }
+    state.insert(QStringLiteral("row"),
+                 static_cast<int>(std::distance(entries.cbegin(), existing)));
+    state.insert(QStringLiteral("title"), QString::fromStdString(snapshot.title()));
+    state.insert(QStringLiteral("releaseYear"), snapshot.releaseYear());
+    state.insert(QStringLiteral("genreIds"), genreIds);
+    state.insert(QStringLiteral("posterPath"), QString::fromStdString(snapshot.posterPath()));
+    state.insert(QStringLiteral("rating"), snapshot.rating());
+    state.insert(QStringLiteral("voteCount"), static_cast<qlonglong>(snapshot.voteCount()));
+    state.insert(QStringLiteral("watchlist"), existing->watchlist());
+    state.insert(QStringLiteral("watched"), existing->watched());
+    state.insert(QStringLiteral("hidden"), existing->hidden());
+    RR_LOG_D() << "MyList state captured" << QString::fromStdString(snapshot.title())
+               << "row" << state.value(QStringLiteral("row")).toInt();
+    return state;
+}
+
+void MyListController::restoreState(const QVariantMap &state)
+{
+    const qlonglong tmdbId = state.value(QStringLiteral("tmdbId")).toLongLong();
+    const int mediaType = state.value(QStringLiteral("mediaType")).toInt();
+    const Domain::CandidateIdentity identity(
+        mediaType == 1 ? Domain::MediaType::Tv : Domain::MediaType::Movie, tmdbId);
+
+    if (!state.value(QStringLiteral("exists")).toBool())
+    {
+        RR_LOG_I() << "MyList undo removes title" << tmdbId;
+        m_model.removeEntry(identity);
+    }
+    else
+    {
+        Domain::MyListEntry entry(
+            buildSnapshot(tmdbId,
+                          mediaType,
+                          state.value(QStringLiteral("title")).toString(),
+                          state.value(QStringLiteral("releaseYear")).toInt(),
+                          state.value(QStringLiteral("genreIds")).toList(),
+                          state.value(QStringLiteral("posterPath")).toString(),
+                          state.value(QStringLiteral("rating")).toDouble(),
+                          state.value(QStringLiteral("voteCount")).toLongLong()),
+            state.value(QStringLiteral("watchlist")).toBool(),
+            state.value(QStringLiteral("watched")).toBool(),
+            state.value(QStringLiteral("hidden")).toBool());
+        RR_LOG_I() << "MyList undo restores title" << QString::fromStdString(entry.snapshot().title())
+                   << "row" << state.value(QStringLiteral("row")).toInt();
+        m_model.insertEntryAt(state.value(QStringLiteral("row")).toInt(), std::move(entry));
+    }
+    persist();
+    bumpRevision();
+    emit watchedChanged();
 }
 
 Domain::TitleSnapshot MyListController::buildSnapshot(qlonglong tmdbId,

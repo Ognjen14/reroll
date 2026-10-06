@@ -136,6 +136,7 @@ void DiscoverController::setSearchQuery(const QString &query)
         return;
     }
 
+    setSearching(true);
     m_searchDebounceTimer.start();
 }
 
@@ -229,17 +230,17 @@ void DiscoverController::start()
              [this](Infrastructure::TmdbPageNumber page,
                     Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
         return m_tmdbClient.trendingTv(page, std::move(handler));
-    });
+    }, &m_trendingTvPagination);
     fetchInto(m_popularMovies, "popular movies",
              [this](Infrastructure::TmdbPageNumber page,
                     Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
         return m_tmdbClient.popularMovie(page, std::move(handler));
-    });
+    }, &m_popularMoviesPagination);
     fetchInto(m_popularTv, "popular tv",
              [this](Infrastructure::TmdbPageNumber page,
                     Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
         return m_tmdbClient.popularTv(page, std::move(handler));
-    });
+    }, &m_popularTvPagination);
 
     fetchGenreSections(false);
     fetchGenreSections(true);
@@ -422,6 +423,42 @@ void DiscoverController::loadMoreTrendingMovies()
             return m_tmdbClient.trendingMovie(page, std::move(handler));
         },
         "trendingMovies");
+}
+
+void DiscoverController::loadMoreTrendingTv()
+{
+    loadMoreGeneric(
+        m_trendingTv,
+        m_trendingTvPagination,
+        [this](Infrastructure::TmdbPageNumber page,
+              Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
+            return m_tmdbClient.trendingTv(page, std::move(handler));
+        },
+        "trendingTv");
+}
+
+void DiscoverController::loadMorePopularMovies()
+{
+    loadMoreGeneric(
+        m_popularMovies,
+        m_popularMoviesPagination,
+        [this](Infrastructure::TmdbPageNumber page,
+              Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
+            return m_tmdbClient.popularMovie(page, std::move(handler));
+        },
+        "popularMovies");
+}
+
+void DiscoverController::loadMorePopularTv()
+{
+    loadMoreGeneric(
+        m_popularTv,
+        m_popularTvPagination,
+        [this](Infrastructure::TmdbPageNumber page,
+              Infrastructure::TmdbClient::DiscoverCompletionHandler handler) {
+            return m_tmdbClient.popularTv(page, std::move(handler));
+        },
+        "popularTv");
 }
 
 void DiscoverController::loadMoreForGenre(int genreId)

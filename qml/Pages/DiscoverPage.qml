@@ -58,6 +58,19 @@ Item {
         }
     }
 
+    function showWatchlistToast(newValue) {
+        _toast.show(newValue ? qsTr("Added to watchlist") : qsTr("Removed from watchlist"))
+    }
+
+    function showWatchedToast(newValue) {
+        _toast.show(newValue ? qsTr("Marked as watched") : qsTr("Removed from watched"))
+    }
+
+    function clearSearch() {
+        _searchField.clear()
+        DiscoverController.searchQuery = ""
+    }
+
     Rectangle {
         anchors.fill: parent
         color: S.AppTheme.background
@@ -66,27 +79,6 @@ Item {
     TitleDetailsDrawer {
         id: _titleDetailsDrawer
         objectName: "discoverTitleDetailsDrawer"
-    }
-
-    TutorialSheet {
-        id: _tutorialSheet
-        objectName: "discoverTutorialSheet"
-
-        heading: qsTr("How Discover Works")
-        sections: [
-            {
-                heading: qsTr("Search"),
-                body: qsTr("Search for a specific movie or TV show by title.")
-            },
-            {
-                heading: qsTr("Browse"),
-                body: qsTr("Scroll down to browse trending, popular, and titles by genre.")
-            },
-            {
-                heading: qsTr("Quick actions"),
-                body: qsTr("Tap the heart or checkmark badge on any poster to save it to your watchlist or mark it watched. Tap the poster itself for more details.")
-            }
-        ]
     }
 
     ColumnLayout {
@@ -120,38 +112,96 @@ Item {
             border.width: _searchField.activeFocus ? 1 : 0
             border.color: S.AppTheme.primary
 
-            Basic.TextField {
-                id: _searchField
-                objectName: "discoverSearchField"
-
+            RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: S.AppTheme.spacing16
-                anchors.rightMargin: S.AppTheme.spacing16
-                verticalAlignment: TextInput.AlignVCenter
-                placeholderText: qsTr("Search movies & TV")
-                color: S.AppTheme.textPrimary
-                placeholderTextColor: S.AppTheme.textSecondary
-                font.pixelSize: S.AppTheme.fs14
-                text: DiscoverController.searchQuery
-                background: Item {}
+                anchors.rightMargin: S.AppTheme.spacing12
+                spacing: S.AppTheme.spacing8
 
-                onTextEdited: DiscoverController.searchQuery = text
+                ThemedIcon {
+                    id: _searchIcon
+                    objectName: "discoverSearchIcon"
+
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 18
+                    visible: imageStatus === Image.Ready
+                    source: "qrc:/assets/search.svg"
+                    showPlaceholder: false
+                    tintColor: S.AppTheme.textSecondary
+                }
+
+                Basic.TextField {
+                    id: _searchField
+                    objectName: "discoverSearchField"
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    leftPadding: 0
+                    rightPadding: 0
+                    verticalAlignment: TextInput.AlignVCenter
+                    placeholderText: qsTr("Search movies & TV")
+                    color: S.AppTheme.textPrimary
+                    placeholderTextColor: S.AppTheme.textSecondary
+                    font.pixelSize: S.AppTheme.fs14
+                    text: DiscoverController.searchQuery
+                    inputMethodHints: Qt.ImhNoPredictiveText
+                    background: Item {}
+
+                    onTextEdited: DiscoverController.searchQuery = text
+                    Keys.onEscapePressed: root.clearSearch()
+                }
+
+                BusyIndicator {
+                    objectName: "discoverSearchBusyIndicator"
+
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+                    visible: DiscoverController.searching
+                    running: visible
+                    padding: 0
+                }
+
+                Item {
+                    objectName: "discoverSearchClearButton"
+
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    visible: _searchField.text.length > 0
+
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Clear search")
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 22
+                        height: 22
+                        radius: 11
+                        color: S.AppTheme.outline
+                        opacity: _clearArea.pressed ? 0.6 : 1.0
+
+                        ThemedIcon {
+                            anchors.centerIn: parent
+                            width: 10
+                            height: 10
+                            source: "qrc:/assets/reroll_page/x.png"
+                            showPlaceholder: false
+                            tintColor: S.AppTheme.textPrimary
+                        }
+                    }
+
+                    MouseArea {
+                        id: _clearArea
+
+                        anchors.fill: parent
+                        anchors.margins: -S.AppTheme.spacing8
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.clearSearch()
+                            _searchField.forceActiveFocus()
+                        }
+                    }
+                }
             }
-        }
-
-        AppButton {
-            objectName: "discoverTutorialButton"
-
-            Layout.alignment: Qt.AlignRight
-            visible: AppSettings.appLaunchCount <= 2 && !root.searchActive
-            text: qsTr("Tips")
-            accessibleName: qsTr("How Discover works")
-            contentRadius: S.AppTheme.radiusPill
-            backgroundColor: S.AppTheme.surfaceVariant
-            foregroundColor: S.AppTheme.textSecondary
-            borderColor: "transparent"
-
-            onClicked: _tutorialSheet.open()
         }
 
         ListView {
@@ -251,18 +301,10 @@ Item {
             delegate: DiscoverPosterCardDelegate {
                 width: _searchGrid.cellWidth
 
-                onWatchlistToggled: function(newValue) {
-                    _toast.show(newValue
-                                ? qsTr("Added to watchlist")
-                                : qsTr("Removed from watchlist"))
-                }
-                onWatchedToggled: function(newValue) {
-                    _toast.show(newValue
-                                ? qsTr("Marked as watched")
-                                : qsTr("Removed from watched"))
-                }
+                onWatchlistToggled: function(newValue) { root.showWatchlistToast(newValue) }
+                onWatchedToggled: function(newValue) { root.showWatchedToast(newValue) }
                 onDetailsRequested: _titleDetailsDrawer.openFor(
-                    tmdbId, mediaType, title, releaseYear, posterPath, rating)
+                    tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
             }
 
             footer: Item {
@@ -441,197 +483,75 @@ Item {
                     }
                 }
 
-                Column {
+                PosterRowSection {
+                    id: _trendingMoviesRow
+
                     width: parent.width
-                    spacing: S.AppTheme.spacing10
-                    visible: _trendingMoviesRow.count > 0
+                    listObjectName: "discoverTrendingMoviesRow"
+                    title: qsTr("Trending Now")
+                    model: DiscoverController.trendingMovies
 
-                    RowLayout {
-                        width: parent.width
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("TRENDING NOW")
-                            color: S.AppTheme.textPrimary
-                            font.pixelSize: S.AppTheme.fs14
-                            font.weight: Font.Black
-                            font.letterSpacing: 1
-                        }
-
-                        Text {
-                            objectName: "discoverSeeAllTrending"
-                            text: qsTr("See all")
-                            color: S.AppTheme.info
-
-                            MouseArea {
-                                anchors.fill: parent
-                                anchors.margins: -S.AppTheme.spacing8
-                                onClicked: root.openTitleGrid(
-                                               qsTr("Trending Now"),
-                                               DiscoverController.trendingMovies,
-                                               function() {
-                                                   DiscoverController.loadMoreTrendingMovies()
-                                               })
-                            }
-                        }
-                    }
-
-                    ListView {
-                        id: _trendingMoviesRow
-                        objectName: "discoverTrendingMoviesRow"
-
-                        width: parent.width
-                        height: 210
-                        orientation: ListView.Horizontal
-                        spacing: S.AppTheme.spacing10
-                        clip: true
-                        model: DiscoverController.trendingMovies
-
-                        delegate: DiscoverPosterCardDelegate {
-                            width: 140
-
-                            onWatchlistToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Added to watchlist")
-                                            : qsTr("Removed from watchlist"))
-                            }
-                            onWatchedToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Marked as watched")
-                                            : qsTr("Removed from watched"))
-                            }
-                            onDetailsRequested: _titleDetailsDrawer.openFor(
-                                tmdbId, mediaType, title, releaseYear, posterPath, rating)
-                        }
+                    onSeeAllRequested: root.openTitleGrid(title, model, function() {
+                        DiscoverController.loadMoreTrendingMovies()
+                    })
+                    onWatchlistToggled: function(newValue) { root.showWatchlistToast(newValue) }
+                    onWatchedToggled: function(newValue) { root.showWatchedToast(newValue) }
+                    onDetailsRequested: function(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount) {
+                        _titleDetailsDrawer.openFor(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
                     }
                 }
 
-                Column {
+                PosterRowSection {
+                    id: _trendingTvRow
+
                     width: parent.width
-                    spacing: S.AppTheme.spacing10
-                    visible: _trendingTvRow.count > 0
+                    listObjectName: "discoverTrendingTvRow"
+                    title: qsTr("Trending TV")
+                    model: DiscoverController.trendingTv
 
-                    Text {
-                        text: qsTr("TRENDING TV")
-                        color: S.AppTheme.textPrimary
-                        font.pixelSize: S.AppTheme.fs14
-                        font.weight: Font.Black
-                        font.letterSpacing: 1
-                    }
-
-                    ListView {
-                        id: _trendingTvRow
-                        objectName: "discoverTrendingTvRow"
-
-                        width: parent.width
-                        height: 210
-                        orientation: ListView.Horizontal
-                        spacing: S.AppTheme.spacing10
-                        clip: true
-                        model: DiscoverController.trendingTv
-
-                        delegate: DiscoverPosterCardDelegate {
-                            width: 140
-
-                            onWatchlistToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Added to watchlist")
-                                            : qsTr("Removed from watchlist"))
-                            }
-                            onWatchedToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Marked as watched")
-                                            : qsTr("Removed from watched"))
-                            }
-                            onDetailsRequested: _titleDetailsDrawer.openFor(
-                                tmdbId, mediaType, title, releaseYear, posterPath, rating)
-                        }
+                    onSeeAllRequested: root.openTitleGrid(title, model, function() {
+                        DiscoverController.loadMoreTrendingTv()
+                    })
+                    onWatchlistToggled: function(newValue) { root.showWatchlistToast(newValue) }
+                    onWatchedToggled: function(newValue) { root.showWatchedToast(newValue) }
+                    onDetailsRequested: function(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount) {
+                        _titleDetailsDrawer.openFor(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
                     }
                 }
 
-                Column {
+                PosterRowSection {
+                    id: _popularMoviesRow
+
                     width: parent.width
-                    spacing: S.AppTheme.spacing10
-                    visible: _popularMoviesRow.count > 0
+                    listObjectName: "discoverPopularMoviesRow"
+                    title: qsTr("Popular Movies")
+                    model: DiscoverController.popularMovies
 
-                    Text {
-                        text: qsTr("POPULAR MOVIES")
-                        color: S.AppTheme.textPrimary
-                        font.pixelSize: S.AppTheme.fs14
-                        font.weight: Font.Black
-                        font.letterSpacing: 1
-                    }
-
-                    ListView {
-                        id: _popularMoviesRow
-                        objectName: "discoverPopularMoviesRow"
-
-                        width: parent.width
-                        height: 210
-                        orientation: ListView.Horizontal
-                        spacing: S.AppTheme.spacing10
-                        clip: true
-                        model: DiscoverController.popularMovies
-
-                        delegate: DiscoverPosterCardDelegate {
-                            width: 140
-
-                            onWatchlistToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Added to watchlist")
-                                            : qsTr("Removed from watchlist"))
-                            }
-                            onWatchedToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Marked as watched")
-                                            : qsTr("Removed from watched"))
-                            }
-                            onDetailsRequested: _titleDetailsDrawer.openFor(
-                                tmdbId, mediaType, title, releaseYear, posterPath, rating)
-                        }
+                    onSeeAllRequested: root.openTitleGrid(title, model, function() {
+                        DiscoverController.loadMorePopularMovies()
+                    })
+                    onWatchlistToggled: function(newValue) { root.showWatchlistToast(newValue) }
+                    onWatchedToggled: function(newValue) { root.showWatchedToast(newValue) }
+                    onDetailsRequested: function(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount) {
+                        _titleDetailsDrawer.openFor(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
                     }
                 }
 
-                Column {
+                PosterRowSection {
+                    id: _popularTvRow
+
                     width: parent.width
-                    spacing: S.AppTheme.spacing10
-                    visible: _popularTvRow.count > 0
+                    listObjectName: "discoverPopularTvRow"
+                    title: qsTr("Popular TV")
+                    model: DiscoverController.popularTv
 
-                    Text {
-                        text: qsTr("POPULAR TV")
-                        color: S.AppTheme.textPrimary
-                        font.pixelSize: S.AppTheme.fs14
-                        font.weight: Font.Black
-                        font.letterSpacing: 1
-                    }
-
-                    ListView {
-                        id: _popularTvRow
-                        objectName: "discoverPopularTvRow"
-
-                        width: parent.width
-                        height: 210
-                        orientation: ListView.Horizontal
-                        spacing: S.AppTheme.spacing10
-                        clip: true
-                        model: DiscoverController.popularTv
-
-                        delegate: DiscoverPosterCardDelegate {
-                            width: 140
-
-                            onWatchlistToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Added to watchlist")
-                                            : qsTr("Removed from watchlist"))
-                            }
-                            onWatchedToggled: function(newValue) {
-                                _toast.show(newValue
-                                            ? qsTr("Marked as watched")
-                                            : qsTr("Removed from watched"))
-                            }
-                            onDetailsRequested: _titleDetailsDrawer.openFor(
-                                tmdbId, mediaType, title, releaseYear, posterPath, rating)
-                        }
+                    onSeeAllRequested: root.openTitleGrid(title, model, function() {
+                        DiscoverController.loadMorePopularTv()
+                    })
+                    onWatchlistToggled: function(newValue) { root.showWatchlistToast(newValue) }
+                    onWatchedToggled: function(newValue) { root.showWatchedToast(newValue) }
+                    onDetailsRequested: function(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount) {
+                        _titleDetailsDrawer.openFor(tmdbId, mediaType, title, releaseYear, posterPath, rating, genreIds, voteCount)
                     }
                 }
 

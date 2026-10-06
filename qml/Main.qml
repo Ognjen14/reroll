@@ -38,6 +38,16 @@ ApplicationWindow {
 
     property double _lastBackMs: 0
 
+    function switchTab(index) {
+        const pages = [homePage, discoverPage, favoritesPage, settingsPage]
+        if (index < 0 || index >= pages.length)
+            return
+        while (_stack.depth > 1)
+            _stack.pop(StackView.Immediate)
+        _navBar.currentIndex = index
+        _stack.replace(pages[index], StackView.Immediate)
+    }
+
     // Returns true when the press was consumed (i.e. must NOT close the window).
     function _handleBack() {
         // Some devices deliver both the OnBackInvokedCallback route and a raw
@@ -102,11 +112,7 @@ ApplicationWindow {
         height: (_stack.depth > 1) ? 0 : implicitHeight
         currentIndex: 0 //Start at default
 
-        onTabSelected: (i)=> {
-                            const pages = [homePage,discoverPage,favoritesPage,settingsPage]
-                           _stack.replace(pages[i],StackView.Immediate)
-
-        }
+        onTabSelected: (i)=> window.switchTab(i)
     }
 
     Component{

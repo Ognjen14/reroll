@@ -13,6 +13,18 @@ Basic.Drawer {
     property int minimumSelectableYear: 1900
     property int maximumSelectableYear: 2026
 
+    readonly property string applyText: {
+        if (HomeController.matchCountLoading)
+            return qsTr("Apply · counting...")
+        const count = HomeController.editableMatchCount
+        if (count <= 0)
+            return qsTr("Apply Filters")
+        if (count === 1)
+            return qsTr("Apply · 1 title")
+        return qsTr("Apply · %1 titles").arg(Number(count).toLocaleString(Qt.locale(), "f", 0))
+    }
+
+
     edge: Qt.BottomEdge
     implicitWidth: 420
     implicitHeight: 640
@@ -63,6 +75,8 @@ Basic.Drawer {
 
     onOpened: {
         synchronizeInputs()
+        HomeController.refreshMatchCount()
+        HomeController.ensureGenreLists()
         PopupRegistry.register(root)
     }
     onClosed: PopupRegistry.unregister(root)
@@ -144,13 +158,40 @@ Basic.Drawer {
                 width: _scrollView.availableWidth
                 spacing: AppTheme.spacing14
 
-                Text {
+                RowLayout {
                     x: parent.horizontalInset
                     width: parent.width - 2 * parent.horizontalInset
-                    text: qsTr("Filters")
-                    color: AppTheme.textPrimary
-                    font.pixelSize: AppTheme.fs18
-                    font.weight: Font.Bold
+                    spacing: AppTheme.spacing12
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Filters")
+                        color: AppTheme.textPrimary
+                        font.pixelSize: AppTheme.fs18
+                        font.weight: Font.Bold
+                    }
+
+                    Text {
+                        objectName: "filterResetButton"
+
+                        text: qsTr("Reset")
+                        color: AppTheme.primary
+                        font.pixelSize: AppTheme.fs14
+                        font.weight: Font.DemiBold
+                        opacity: _resetArea.pressed ? 0.6 : 1.0
+
+                        Accessible.role: Accessible.Button
+                        Accessible.name: qsTr("Reset filter draft")
+
+                        MouseArea {
+                            id: _resetArea
+
+                            anchors.fill: parent
+                            anchors.margins: -AppTheme.spacing12
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.resetFilters()
+                        }
+                    }
                 }
 
                 UnappliedChangesNotice {
@@ -288,57 +329,66 @@ Basic.Drawer {
                     }
                 }
 
-                Row {
-                    x: parent.horizontalInset
-                    width: parent.width - 2 * parent.horizontalInset
-                    spacing: 8
-
-                    AppButton {
-                        objectName: "filterCloseButton"
-                        width: (parent.width - parent.spacing) / 2
-                        height: AppTheme.controlHeightMedium
-                        text: qsTr("Close")
-                        accessibleName: qsTr("Close filters")
-                        contentRadius: AppTheme.radiusLarge
-                        backgroundColor: AppTheme.surfaceVariant
-                        foregroundColor: AppTheme.textSecondary
-                        borderColor: "transparent"
-
-                        onClicked: root.closeDrawer()
-                    }
-
-                    AppButton {
-                        objectName: "filterResetButton"
-                        width: (parent.width - parent.spacing) / 2
-                        height: AppTheme.controlHeightMedium
-                        text: qsTr("Reset")
-                        accessibleName: qsTr("Reset filter draft")
-                        contentRadius: AppTheme.radiusLarge
-                        backgroundColor: AppTheme.surfaceVariant
-                        foregroundColor: AppTheme.textSecondary
-                        borderColor: "transparent"
-
-                        onClicked: root.resetFilters()
-                    }
-                }
-
-                AppButton {
-                    objectName: "filterApplyButton"
-                    x: parent.horizontalInset
-                    width: parent.width - 2 * parent.horizontalInset
-                    height: AppTheme.controlHeightLarge
-                    text: qsTr("Apply Filters")
-                    accessibleName: qsTr("Apply filters")
-                    contentRadius: AppTheme.radiusPill
-                    foregroundColor: AppTheme.darkMode ? AppTheme.onPrimary : "#FFFFFF"
-
-                    onClicked: root.applyFilters()
-                }
-
                 Item {
                     width: 1
-                    height: 20
+                    height: AppTheme.spacing8
                 }
+            }
+        }
+
+        Rectangle {
+            objectName: "filterApplyBar"
+
+            Layout.fillWidth: true
+            Layout.preferredHeight: _noMatchesText.height + _applyButton.height
+                                    + AppTheme.spacing12 + AppTheme.spacing20
+            color: AppTheme.surface
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: AppTheme.outline
+            }
+
+            Text {
+                id: _noMatchesText
+                objectName: "filterNoMatchesText"
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: AppTheme.spacing18
+                anchors.rightMargin: AppTheme.spacing18
+                anchors.topMargin: visible ? AppTheme.spacing10 : 0
+                height: visible ? implicitHeight : 0
+                visible: HomeController.editableHasNoMatches
+                text: qsTr("No titles match these filters. Try widening the year range, lowering the rating, or using Match Any.")
+                color: AppTheme.warning
+                font.pixelSize: AppTheme.fs12
+                font.weight: Font.DemiBold
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            AppButton {
+                id: _applyButton
+                objectName: "filterApplyButton"
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: _noMatchesText.bottom
+                anchors.leftMargin: AppTheme.spacing18
+                anchors.rightMargin: AppTheme.spacing18
+                anchors.topMargin: AppTheme.spacing12
+                height: AppTheme.controlHeightLarge
+                text: root.applyText
+                accessibleName: root.applyText
+                contentRadius: AppTheme.radiusPill
+                foregroundColor: AppTheme.darkMode ? AppTheme.onPrimary : "#FFFFFF"
+
+                onClicked: root.applyFilters()
             }
         }
     }

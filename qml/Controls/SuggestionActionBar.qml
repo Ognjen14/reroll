@@ -23,6 +23,10 @@ RowLayout {
     signal rerollRequested()
     signal hideRequested()
 
+    function spinReroll() {
+        _rerollButton.spin()
+    }
+
     spacing: AppTheme.spacing20
 
     AppButton {

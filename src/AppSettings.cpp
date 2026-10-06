@@ -78,6 +78,22 @@ void AppSettings::setFontSizeScale(double scale)
     emit fontSizeScaleChanged();
 }
 
+int AppSettings::myListSortMode() const
+{
+    return m_settings.value("myListSortMode", 0).toInt();
+}
+
+void AppSettings::setMyListSortMode(int mode)
+{
+    if (myListSortMode() == mode)
+    {
+        return;
+    }
+
+    m_settings.setValue("myListSortMode", mode);
+    emit myListSortModeChanged();
+}
+
 QString AppSettings::appVersion() const
 {
     return QCoreApplication::applicationVersion();
