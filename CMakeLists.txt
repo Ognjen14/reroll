@@ -188,6 +188,8 @@ qt_add_resources(appReroll "ASSETS"
     assets/start_rating.png
     assets/star.png
     assets/alert-circle.svg
+    assets/search.svg
+    assets/clear.svg
     assets/makimedia_icon.png
 
     assets/nav/discover.svg

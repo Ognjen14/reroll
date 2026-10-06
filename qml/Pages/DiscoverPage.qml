@@ -181,9 +181,9 @@ Item {
 
                         ThemedIcon {
                             anchors.centerIn: parent
-                            width: 10
-                            height: 10
-                            source: "qrc:/assets/reroll_page/x.png"
+                            width: 12
+                            height: 12
+                            source: "qrc:/assets/clear.svg"
                             showPlaceholder: false
                             tintColor: S.AppTheme.textPrimary
                         }
